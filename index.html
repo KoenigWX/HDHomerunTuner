@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HDHomerun TUNER v1.2</title>
+    <!-- Bootstrap 5 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"
+    />
+    <style>
+      .table-sm > tbody > tr:last-child {
+        border-bottom: hidden !important;
+      }
+      .force-clear-btn {
+        margin-top: 12px;
+        width: 100%;
+      }
+    </style>
+  </head>
+
+  <body class="bg-secondary-subtle">
+    <div class="container">
+      <br />
+      <h1 class="text-center">📡 HDHomerun TUNER v1.2 📺</h1>
+      <br />
+
+      <div class="row">
+        <!-- LEFT COLUMN: Device Status + Tuner List + Channel Scan -->
+        <div class="col-sm-4">
+          <!-- DEVICE STATUS CARD -->
+          <div class="card text-center mb-3">
+            <div class="card-header bg-success-subtle">
+              <b class="card-title">
+                Status:
+                <span id="status-badge" class="badge text-bg-success">Connected</span>
+              </b>
+            </div>
+            <div class="card-body row">
+              <div class="col">
+                Device ID:<br />
+                <span id="device-id-badge" class="badge text-bg-primary">--</span>
+              </div>
+              <div class="col">
+                Device IP:<br />
+                <span id="device-ip-badge" class="badge text-bg-primary">--</span>
+              </div>
+              <div class="col">
+                # of Tuners:<br />
+                <span id="tuner-count-badge" class="badge text-bg-primary">--</span>
+              </div>
+            </div>
+          </div>
+          <!-- END DEVICE STATUS CARD -->
+
+          <!-- TUNER LIST -->
+          <div class="list-group mb-3" id="tuner-list">
+            <!-- Tuner rows are populated dynamically -->
+            <a href="#" class="list-group-item list-group-item-action" id="tuner-0-item">
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">Tuner 0</h5>
+                <small><span id="tuner-0-lock-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+              </div>
+              <div class="d-flex w-100 justify-content-between">
+                <small><span id="tuner-0-modulation" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-0-ss-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-0-snq-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-0-seq-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+              </div>
+            </a>
+
+            <a href="#" class="list-group-item list-group-item-action" id="tuner-1-item">
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">Tuner 1</h5>
+                <small><span id="tuner-1-lock-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+              </div>
+              <div class="d-flex w-100 justify-content-between">
+                <small><span id="tuner-1-modulation" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-1-ss-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-1-snq-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-1-seq-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+              </div>
+            </a>
+
+            <a href="#" class="list-group-item list-group-item-action" id="tuner-2-item">
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">Tuner 2</h5>
+                <small><span id="tuner-2-lock-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+              </div>
+              <div class="d-flex w-100 justify-content-between">
+                <small><span id="tuner-2-modulation" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-2-ss-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-2-snq-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-2-seq-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+              </div>
+            </a>
+
+            <a href="#" class="list-group-item list-group-item-action" id="tuner-3-item">
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">Tuner 3</h5>
+                <small><span id="tuner-3-lock-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+              </div>
+              <div class="d-flex w-100 justify-content-between">
+                <small><span id="tuner-3-modulation" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-3-ss-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-3-snq-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+                <small><span id="tuner-3-seq-badge" class="badge rounded-pill text-bg-secondary">--</span></small>
+              </div>
+            </a>
+          </div>
+          <!-- END TUNER LIST -->
+
+          <!-- CHANNEL SCAN CARD -->
+          <div class="card mb-4">
+            <div class="card-header bg-warning-subtle d-flex w-100 justify-content-between align-items-center">
+              <b>Channel Scan</b>
+              <button
+                id="scan-again-btn"
+                type="button"
+                class="btn btn-warning"
+                style="--bs-btn-padding-y: 0.15rem; --bs-btn-padding-x: 0.5rem; --bs-btn-font-size: 0.75rem;"
+              >
+                Scan Again
+              </button>
+            </div>
+            <div class="card-body">
+              <table class="table caption-top table-sm" id="scan-table">
+                <caption id="last-run-caption">Last Run: --</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" style="width: 15%;">CH. #</th>
+                    <th scope="col"></th>
+                    <th scope="col" style="width: 8%;" class="text-center">SS</th>
+                    <th scope="col" style="width: 8%;" class="text-center">SNQ</th>
+                  </tr>
+                </thead>
+                <tbody id="scan-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- END CHANNEL SCAN CARD -->
+
+          <!-- FORCE CLEAR LOCKS BUTTON -->
+          <button class="btn btn-danger force-clear-btn" id="force-clear-btn">
+            <i class="bi bi-unlock"></i> Force Clear All Tuner Locks
+          </button>
+        </div>
+        <!-- END LEFT COLUMN -->
+
+        <!-- RIGHT COLUMN: Tuning Form + Signal Info + Chart -->
+        <div class="col-sm-8">
+          <div class="card mb-4">
+            <div class="card-body">
+              <!-- TUNING FORM -->
+              <div class="input-group mb-3">
+                <label class="input-group-text" for="channel-input"><i class="bi bi-123"></i></label>
+                <input
+                  type="number"
+                  id="channel-input"
+                  class="form-control"
+                  placeholder="Channel Number:"
+                  aria-label="Channel Number"
+                  min="2"
+                  max="51"
+                />
+                <select class="form-select" id="program-select" aria-label="Select Program" disabled>
+                  <option value="" disabled selected>Select Program…</option>
+                </select>
+                <button id="tune-button" class="btn btn-success disabled" type="button">Tune</button>
+                <button id="poll-button" class="btn btn-outline-danger" type="button">
+                  <i class="bi bi-sign-stop-fill"></i> Polling
+                </button>
+              </div>
+              <!-- END TUNING FORM -->
+
+              <!-- SIGNAL INFO SECTION -->
+              <div id="signal-info">
+                <div class="mb-2">
+                  <h5><strong>Signal Strength:</strong></h5>
+                  <div
+                    class="progress"
+                    role="progressbar"
+                    aria-valuenow="0"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    style="height: 50px; font-size: 2.25rem;"
+                  >
+                    <div
+                      id="ss-progress-bar"
+                      class="progress-bar progress-bar-striped progress-bar-animated bg-secondary"
+                      style="width: 0%;"
+                    >
+                      <strong id="ss-percentage-text">--%</strong>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-2">
+                  <h5><strong>Signal to Noise Quality:</strong></h5>
+                  <div
+                    class="progress"
+                    role="progressbar"
+                    aria-valuenow="0"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    style="height: 50px; font-size: 2.25rem;"
+                  >
+                    <div
+                      id="snq-progress-bar"
+                      class="progress-bar progress-bar-striped progress-bar-animated bg-secondary"
+                      style="width: 0%;"
+                    >
+                      <strong id="snq-percentage-text">--%</strong>
+                    </div>
+                  </div>
+                </div>
+                <div class="mb-2">
+                  <h5><strong>Symbol Error Quality:</strong></h5>
+                  <div
+                    class="progress"
+                    role="progressbar"
+                    aria-valuenow="0"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    style="height: 50px; font-size: 2.25rem;"
+                  >
+                    <div
+                      id="seq-progress-bar"
+                      class="progress-bar progress-bar-striped progress-bar-animated bg-secondary"
+                      style="width: 0%;"
+                    >
+                      <strong id="seq-percentage-text">--%</strong>
+                    </div>
+                  </div>
+                </div>
+                <!-- TRANSPORT STREAM BITRATE (hidden until program chosen) -->
+                <div id="ts-info" class="mb-2" hidden>
+                  <h5><strong>Transport Stream Bitrate:</strong></h5>
+                  <div
+                    class="progress"
+                    role="progressbar"
+                    aria-valuenow="0"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    style="height: 50px; font-size: 1.25rem;"
+                  >
+                    <div
+                      id="ts-progress-bar"
+                      class="progress-bar progress-bar-striped progress-bar-animated bg-secondary"
+                      style="width: 0%;"
+                    >
+                      <strong id="ts-percentage-text">--/-- mbps</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- END SIGNAL INFO -->
+
+              <br />
+
+              <!-- CHART CONTAINER -->
+              <div id="chart-container" class="p-3 mb-4 bg-body-secondary rounded-3">
+                <canvas id="signal-chart" style="height: 300px; width: 100%;"></canvas>
+              </div>
+              <!-- END CHART -->
+            </div>
+          </div>
+        </div>
+        <!-- END RIGHT COLUMN -->
+      </div>
+      <br />
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <!-- Chart.js itself -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3/dist/chart.min.js"></script>
+    <!-- date‐fns adapter for Chart.js time axis -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script>
+  // Utility to set an element’s text + badge color class
+  function setBadge(id, text, colorClass) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerText = text;
+    el.className = el.className
+      .split(" ")
+      .filter((c) => !c.startsWith("text-bg-") && !c.startsWith("badge-"))
+      .join(" ");
+    el.classList.add("badge", colorClass);
+  }
+
+  // Helper to reset any bg/text-bg classes, then apply the new one
+  function setBg(el, newClass) {
+    Array.from(el.classList).forEach((c) => {
+      if (c.startsWith("bg-") || c.startsWith("text-bg-")) {
+        el.classList.remove(c);
+      }
+    });
+    el.classList.add(newClass);
+  }
+
+  // Color‐selection helpers based on thresholds
+  function ssColorClass(v) {
+    if (v >= 97) return "bg-danger";
+    else if (v >= 70) return "bg-success";
+    else if (v >= 50) return "bg-warning";
+    else return "bg-danger";
+  }
+  function snqColorClass(v) {
+    if (v >= 90) return "bg-success";
+    else if (v >= 65) return "bg-warning";
+    else return "bg-danger";
+  }
+  function seqColorClass(v) {
+    if (v === 100) return "bg-success";
+    else if (v === 99) return "bg-warning";
+    else return "bg-danger";
+  }
+
+  // Update a progress bar (barId/textId) given a numeric value and a color‐selector
+  function updateProgressBar(barId, textId, value, colorFn) {
+    const bar = document.getElementById(barId);
+    const txt = document.getElementById(textId);
+    if (!bar || !txt) return;
+
+    if (value === null || value === undefined) {
+      bar.style.width = "0%";
+      bar.setAttribute("aria-valuenow", 0);
+      txt.innerText = "--%";
+      bar.classList.remove("bg-success", "bg-warning", "bg-danger");
+      bar.classList.add("bg-secondary");
+    } else {
+      bar.style.width = value + "%";
+      bar.setAttribute("aria-valuenow", value);
+      txt.innerText = value + "%";
+      bar.classList.remove("bg-success", "bg-warning", "bg-danger", "bg-secondary");
+      bar.classList.add(colorFn(value));
+    }
+  }
+
+  // Update TS bitrate bar
+  function updateTSBar(barId, textId, bitrate, maxBitrate) {
+    const bar = document.getElementById(barId);
+    const txt = document.getElementById(textId);
+    if (!bar || !txt) return;
+
+    if (bitrate === null || maxBitrate === null) {
+      bar.style.width = "0%";
+      txt.innerText = "--/-- mbps";
+      bar.classList.remove("bg-success", "bg-warning", "bg-danger");
+      bar.classList.add("bg-secondary");
+    } else {
+      // Convert to mbps
+      const mbps = bitrate / 1_000_000;
+      const mbpsMax = maxBitrate / 1_000_000;
+      const pct = Math.floor((mbps / mbpsMax) * 100);
+      bar.style.width = pct + "%";
+      txt.innerText = `${mbps.toFixed(2)}/${mbpsMax.toFixed(2)} mbps`;
+      bar.classList.remove("bg-secondary");
+      // Always green for TS bar
+      bar.classList.add("bg-success");
+    }
+  }
+
+  // Clear all three primary progress bars to gray
+  function clearAllProgressBars() {
+    updateProgressBar("ss-progress-bar", "ss-percentage-text", null, () => {});
+    updateProgressBar("snq-progress-bar", "snq-percentage-text", null, () => {});
+    updateProgressBar("seq-progress-bar", "seq-percentage-text", null, () => {});
+  }
+
+  // Toggle the "Scan Again" button into a spinner state
+  function setScanning(isScanning) {
+    const btn = document.getElementById("scan-again-btn");
+    if (!btn) return;
+
+    if (isScanning) {
+      btn.disabled = true;
+      btn.innerHTML = `
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        &nbsp;Scanning…
+      `;
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = "Scan Again";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    let selectedTuner = null;
+
+    // ───────────────────────────────────────────────────────────
+    // Chart.js (time‐series, not streaming plugin)
+    // ───────────────────────────────────────────────────────────
+    const ctx = document.getElementById("signal-chart").getContext("2d");
+    const signalChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        datasets: [
+          {
+            label: "SS",
+            data: [], // each point: { x: <timestamp>, y: <value> }
+            borderColor: "red",
+            fill: false,
+            tension: 0.3,
+          },
+          {
+            label: "SNQ",
+            data: [],
+            borderColor: "green",
+            fill: false,
+            tension: 0.3,
+          },
+          {
+            label: "SEQ",
+            data: [],
+            borderColor: "blue",
+            fill: false,
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        animation: false,
+        scales: {
+          x: {
+            type: "time", // requires chartjs-adapter-date-fns
+            time: {
+              unit: "second",
+              tooltipFormat: "HH:mm:ss",
+            },
+            title: {
+              display: true,
+              text: "Time",
+            },
+          },
+          y: {
+            min: 0,
+            max: 100,
+            title: {
+              display: true,
+              text: "Percentage (%)",
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            position: "bottom",
+          },
+        },
+      },
+    });
+
+    // Every second, fetch the current tuner’s SS/SNQ/SEQ and append to the datasets
+    setInterval(() => {
+      if (selectedTuner === null) return;
+      fetch("/api/tuners")
+        .then((r) => r.json())
+        .then((tuners) => {
+          const t = tuners.find((x) => x.index === selectedTuner);
+          if (!t || !t.locked) return;
+          const now = Date.now();
+          signalChart.data.datasets[0].data.push({ x: now, y: t.ss });
+          signalChart.data.datasets[1].data.push({ x: now, y: t.snq });
+          signalChart.data.datasets[2].data.push({ x: now, y: t.seq });
+          signalChart.update("none");
+        })
+        .catch(() => {});
+    }, 1000);
+
+    // ───────────────────────────────────────────────────────────
+    // 1) Populate Status badge once
+    // ───────────────────────────────────────────────────────────
+    fetch("/api/status")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.connected) {
+          setBadge("status-badge", "Connected", "text-bg-success");
+          document.getElementById("device-id-badge").innerText = data.device_id;
+          document.getElementById("device-ip-badge").innerText = data.device_ip;
+          document.getElementById("tuner-count-badge").innerText = data.tuner_count;
+        } else {
+          setBadge("status-badge", "Disconnected", "text-bg-danger");
+          clearAllProgressBars();
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setBadge("status-badge", "Error", "text-bg-danger");
+        clearAllProgressBars();
+      });
+
+    // ───────────────────────────────────────────────────────────
+    // 2) Fetch & update tuner list badges (poll every second)
+    // ───────────────────────────────────────────────────────────
+
+    function fetchAndUpdateTuners() {
+      fetch("/api/tuners")
+        .then((r) => r.json())
+        .then((tuners) => {
+          tuners.forEach((t) => {
+            const idx = t.index;
+            const lockEl = document.getElementById(`tuner-${idx}-lock-badge`);
+            const modEl = document.getElementById(`tuner-${idx}-modulation`);
+            const ssEl = document.getElementById(`tuner-${idx}-ss-badge`);
+            const snqEl = document.getElementById(`tuner-${idx}-snq-badge`);
+            const seqEl = document.getElementById(`tuner-${idx}-seq-badge`);
+
+            // 1) Update lock badge
+            if (t.locked) {
+              lockEl.innerText = `In-Use (${t.lock})`;
+              setBg(lockEl, "text-bg-danger");
+            } else {
+              lockEl.innerText = "Available";
+              setBg(lockEl, "text-bg-success");
+            }
+
+            // 2) Update “modulation/channel” badge
+            if (t.channel !== null) {
+              modEl.innerText = `CH: ${t.channel}`;
+              setBg(modEl, "text-bg-info");
+            } else {
+              modEl.innerText = "--";
+              setBg(modEl, "text-bg-secondary");
+            }
+
+            // 3) Update SS/SNQ/SEQ badges (always reset then recolor)
+            ssEl.innerText = `SS: ${t.ss}%`;
+            setBg(ssEl, ssColorClass(t.ss));
+
+            snqEl.innerText = `SNQ: ${t.snq}%`;
+            setBg(snqEl, snqColorClass(t.snq));
+
+            seqEl.innerText = `SEQ: ${t.seq}%`;
+            setBg(seqEl, seqColorClass(t.seq));
+          });
+
+          // If a tuner is selected, still update its progress bars:
+          if (selectedTuner !== null) {
+            const chosen = tuners.find((x) => x.index === selectedTuner);
+            if (!chosen) {
+              clearAllProgressBars();
+              document.getElementById("ts-info").hidden = true;
+            } else {
+              updateProgressBar("ss-progress-bar", "ss-percentage-text", chosen.ss, ssColorClass);
+              updateProgressBar(
+                "snq-progress-bar",
+                "snq-percentage-text",
+                chosen.snq,
+                snqColorClass
+              );
+              updateProgressBar(
+                "seq-progress-bar",
+                "seq-percentage-text",
+                chosen.seq,
+                seqColorClass
+              );
+            }
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          // On error, reset everything back to “--” with gray badges
+          for (let i = 0; i < 4; i++) {
+            ["lock-badge", "modulation", "ss-badge", "snq-badge", "seq-badge"].forEach((suffix) => {
+              const el = document.getElementById(`tuner-${i}-${suffix}`);
+              if (el) {
+                el.innerText = "--";
+                el.className = "badge text-bg-secondary";
+              }
+            });
+          }
+          clearAllProgressBars();
+          document.getElementById("ts-info").hidden = true;
+        });
+    }
+
+    fetchAndUpdateTuners();
+    setInterval(fetchAndUpdateTuners, 1000);
+
+    // ───────────────────────────────────────────────────────────
+    // 3) Tuner selection click handler
+    // ───────────────────────────────────────────────────────────
+    const tunerItems = document.querySelectorAll(".list-group-item[id^='tuner-']");
+    tunerItems.forEach((item) => {
+      item.addEventListener("click", (e) => {
+        e.preventDefault();
+        tunerItems.forEach((el) => el.classList.remove("active"));
+        item.classList.add("active");
+
+        selectedTuner = parseInt(item.id.split("-")[1], 10);
+
+        // Hide TS info & program dropdown until tune
+        document.getElementById("ts-info").hidden = true;
+        const programSelect = document.getElementById("program-select");
+        programSelect.hidden = true;
+        programSelect.innerHTML = '<option value="" disabled selected>Select Program…</option>';
+        document.getElementById("tune-button").classList.add("disabled");
+
+        // Clear progress bars right away for this tuner
+        fetch("/api/tuners")
+          .then((r) => r.json())
+          .then((tuners) => {
+            const chosen = tuners.find((x) => x.index === selectedTuner);
+            if (!chosen || !chosen.locked) {
+              clearAllProgressBars();
+            } else {
+              updateProgressBar("ss-progress-bar", "ss-percentage-text", chosen.ss, ssColorClass);
+              updateProgressBar(
+                "snq-progress-bar",
+                "snq-percentage-text",
+                chosen.snq,
+                snqColorClass
+              );
+              updateProgressBar(
+                "seq-progress-bar",
+                "seq-percentage-text",
+                chosen.seq,
+                seqColorClass
+              );
+            }
+          })
+          .catch((err) => {
+            console.error(err);
+            clearAllProgressBars();
+          });
+
+        // **Reset the chart entirely** whenever you switch tuners:
+        signalChart.data.datasets.forEach((ds) => {
+          ds.data.length = 0;
+        });
+        signalChart.update("none");
+      });
+    });
+
+    // ───────────────────────────────────────────────────────────
+    // 4) "Scan Again" button behavior: run actual scan and populate table
+    // ───────────────────────────────────────────────────────────
+    document.getElementById("scan-again-btn").addEventListener("click", () => {
+      setScanning(true);
+
+      // Update “Last Run” immediately
+      const now = new Date();
+      document.getElementById("last-run-caption").innerText =
+        "Last Run: " +
+        now.toLocaleDateString() +
+        " " +
+        now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+      fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tuner: selectedTuner }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          setScanning(false);
+
+          let rows = [];
+          if (data.status === "error" && data.message) {
+            // Parse any “LOCK: …” lines out of data.message
+            const rawLines = data.message.split("\n");
+            let current = null;
+            rawLines.forEach((line) => {
+              line = line.trim();
+              if (line.startsWith("SCANNING:")) {
+                if (current && current.physical && current.subchannels.length > 0) {
+                  rows.push(current);
+                }
+                const m = line.match(/\((\d+)\)/);
+                const phys = m ? parseInt(m[1], 10) : null;
+                current = { physical: phys, ss: 0, snq: 0, subchannels: [] };
+              } else if (line.startsWith("LOCK:") && current) {
+                const lockMatch = line.match(
+                  /^LOCK:\s*(\S+)\s*\(ss=(\d+)\s+snq=(\d+)\s+seq=(\d+)\)/i
+                );
+                if (lockMatch) {
+                  const lockMod = lockMatch[1];
+                  const ssVal = parseInt(lockMatch[2], 10);
+                  const snqVal = parseInt(lockMatch[3], 10);
+                  if (lockMod.toLowerCase() !== "none") {
+                    current.ss = ssVal;
+                    current.snq = snqVal;
+                  } else {
+                    current = null;
+                  }
+                }
+              } else if (line.startsWith("PROGRAM") && current) {
+                const progMatch = line.match(/^PROGRAM\s*\d+:\s*([\d\.]+)\s+(.+)$/i);
+                if (progMatch) {
+                  current.subchannels.push({
+                    num: progMatch[1].trim(),
+                    name: progMatch[2].trim(),
+                  });
+                }
+              }
+            });
+            if (current && current.physical && current.subchannels.length > 0) {
+              rows.push(current);
+            }
+          } else if (Array.isArray(data.results)) {
+            rows = data.results;
+          } else if (Array.isArray(data.channels)) {
+            rows = data.channels;
+          }
+
+          renderScanRows(rows);
+        })
+        .catch((err) => {
+          console.error(err);
+          setScanning(false);
+          document.getElementById("scan-table-body").innerHTML = "";
+        });
+    });
+
+    // ───────────────────────────────────────────────────────────────────
+    // Helper: renderScanRows(arrayOf { physical, ss, snq, subchannels:[…] })
+    // ───────────────────────────────────────────────────────────────────
+    function renderScanRows(rows) {
+      const tbody = document.getElementById("scan-table-body");
+      tbody.innerHTML = "";
+
+      rows.forEach((ch) => {
+        // ─── First Row: physical channel, SS cell, SNQ cell ───
+        const row1 = document.createElement("tr");
+        row1.classList.add("table-active");
+
+        // Column 1: physical channel #
+        const th = document.createElement("th");
+        th.scope = "row";
+        th.innerText = ch.physical;
+        row1.appendChild(th);
+
+        // Column 2: empty (no lock/info text here)
+        const tdInfo = document.createElement("td");
+        tdInfo.innerText = "";
+        row1.appendChild(tdInfo);
+
+        // Column 3: SS cell (apply color to <td> directly)
+        const tdSS = document.createElement("td");
+        tdSS.classList.add("text-center");
+        const ssVal = ch.ss ?? 0;
+        tdSS.classList.add(ssVal < 50 ? "table-danger" : "table-success");
+        tdSS.innerText = ssVal + "%";
+        row1.appendChild(tdSS);
+
+        // Column 4: SNQ cell (apply color to <td> directly)
+        const tdSNQ = document.createElement("td");
+        tdSNQ.classList.add("text-center");
+        const snqVal = ch.snq ?? 0;
+        tdSNQ.classList.add(snqVal < 50 ? "table-danger" : "table-success");
+        tdSNQ.innerText = snqVal + "%";
+        row1.appendChild(tdSNQ);
+
+        tbody.appendChild(row1);
+
+        // ─── Second Row: nested table of subchannels (if any) ───
+        if (Array.isArray(ch.subchannels) && ch.subchannels.length > 0) {
+          const row2 = document.createElement("tr");
+          const tdNested = document.createElement("td");
+          tdNested.colSpan = 4;
+
+          const innerTable = document.createElement("table");
+          innerTable.className = "table table-sm mb-0 table-borderless";
+          const innerBody = document.createElement("tbody");
+
+          ch.subchannels.forEach((sub) => {
+            const subRow = document.createElement("tr");
+
+            const subTh = document.createElement("th");
+            subTh.scope = "row";
+            subTh.style.width = "12.5%";
+            subTh.innerText = sub.num; // e.g. “8.1”
+            subRow.appendChild(subTh);
+
+            const subTd = document.createElement("td");
+            subTd.innerText = sub.name; // e.g. “WAGM-HD”
+            subRow.appendChild(subTd);
+
+            innerBody.appendChild(subRow);
+          });
+
+          innerTable.appendChild(innerBody);
+          tdNested.appendChild(innerTable);
+          row2.appendChild(tdNested);
+          tbody.appendChild(row2);
+        }
+      });
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // 5) Force‐clear all tuner locks (calls /api/override?tuner=<n> for each tuner 0..3)
+    // ───────────────────────────────────────────────────────────
+    document.getElementById("force-clear-btn").addEventListener("click", () => {
+      for (let tunerId = 0; tunerId < 4; tunerId++) {
+        fetch(`/api/override?tuner=${tunerId}`, {
+          method: "POST",
+        })
+          .then((r) => {
+            if (!r.ok) console.error(`Failed to clear tuner ${tunerId} lock`);
+            return r.json();
+          })
+          .then((resp) => {
+            // Optionally inspect resp.status or resp.message
+          })
+          .catch((err) => {
+            console.error(`Error unlocking tuner ${tunerId}:`, err);
+          });
+      }
+    });
+
+    // ───────────────────────────────────────────────────────────
+    // 6) Tuning logic: fetch subchannels, populate program‐select, reset chart
+    // ───────────────────────────────────────────────────────────
+    const channelInput = document.getElementById("channel-input");
+    const programSelect = document.getElementById("program-select");
+    const tuneButton = document.getElementById("tune-button");
+    const tsInfo = document.getElementById("ts-info");
+
+    // Initially hide the program dropdown
+    programSelect.hidden = true;
+
+    function validateTuneForm() {
+      const chVal = parseInt(channelInput.value, 10);
+      const channelOK =
+        !isNaN(chVal) &&
+        chVal >= parseInt(channelInput.min, 10) &&
+        chVal <= parseInt(channelInput.max, 10);
+      if (channelOK && selectedTuner !== null) {
+        tuneButton.classList.remove("disabled");
+      } else {
+        tuneButton.classList.add("disabled");
+        programSelect.hidden = true;
+        programSelect.innerHTML =
+          '<option value="" disabled selected>Select Program…</option>';
+        tsInfo.hidden = true;
+      }
+    }
+
+    channelInput.addEventListener("input", validateTuneForm);
+    validateTuneForm();
+
+    tuneButton.addEventListener("click", () => {
+      if (tuneButton.classList.contains("disabled")) return;
+      if (selectedTuner === null) return;
+
+      // Reset the chart data right when you hit “Tune”
+      signalChart.data.datasets.forEach((ds) => {
+        ds.data.length = 0;
+      });
+      signalChart.update("none");
+
+      const chVal = parseInt(channelInput.value, 10);
+      programSelect.hidden = true;
+      programSelect.innerHTML = '<option value="" disabled selected>Select Program…</option>';
+      tsInfo.hidden = true;
+
+      fetch("/api/tune", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tuner: selectedTuner, channel: chVal }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          // data.subchannels = [ { num: "8.1", name: "WAGM-HD" }, … ]
+          programSelect.hidden = false;
+          programSelect.innerHTML =
+            '<option value="" disabled selected>Select Program…</option>';
+          data.subchannels.forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p.num;
+            opt.innerText = `${p.num} | ${p.name}`;
+            programSelect.appendChild(opt);
+          });
+        })
+        .catch((err) => {
+          console.error(err);
+          programSelect.hidden = true;
+          tsInfo.hidden = true;
+        });
+    });
+
+    // ───────────────────────────────────────────────────────────
+    // 7) When a program is chosen, fetch its TS info
+    // ───────────────────────────────────────────────────────────
+    programSelect.addEventListener("change", () => {
+      const prog = programSelect.value;
+      if (!prog) {
+        tsInfo.hidden = true;
+        return;
+      }
+      fetch("/api/program_info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tuner: selectedTuner, program: prog }),
+      })
+        .then((r) => r.json())
+        .then((info) => {
+          // info = { bitrate: <bps>, max_bitrate: <bps> }
+          tsInfo.hidden = false;
+          updateTSBar("ts-progress-bar", "ts-percentage-text", info.bitrate, info.max_bitrate);
+        })
+        .catch((err) => {
+          console.error(err);
+          tsInfo.hidden = true;
+        });
+    });
+
+    // ───────────────────────────────────────────────────────────
+    // 8) Initially clear all progress bars
+    // ───────────────────────────────────────────────────────────
+    clearAllProgressBars();
+  });
+</script>
+
+
+  </body>
+</html>
