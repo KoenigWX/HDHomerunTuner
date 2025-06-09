@@ -1,6 +1,8 @@
 import time
 import subprocess
 import re
+import threading
+import uuid
 from flask import Flask, jsonify, request, send_from_directory
 
 app = Flask(
@@ -8,6 +10,9 @@ app = Flask(
     static_folder=".",
     static_url_path=""
 )
+
+# Store scan progress keyed by UUID
+scans = {}
 
 # Mapping from frequency (Hz) to physical channel
 FREQ_TO_CHANNEL = {
@@ -27,8 +32,86 @@ FREQ_TO_CHANNEL = {
    641000000: 42, 647000000: 43, 653000000: 44,
    659000000: 45, 665000000: 46, 671000000: 47,
    677000000: 48, 683000000: 49, 689000000: 50,
-   695000000: 51
+    695000000: 51
 }
+
+
+def run_scan(scan_id, device_id, tuner_index):
+    """Background thread to perform a channel scan."""
+    cmd = ["hdhomerun_config", device_id, "scan", f"/tuner{tuner_index}"]
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except OSError:
+        scans[scan_id] = {"finished": True, "results": []}
+        return
+
+    results = []
+    current_group = None
+    capturing = False
+
+    for raw in proc.stdout:
+        line = raw.strip()
+
+        if line.startswith("SCANNING:"):
+            if current_group and current_group.get("subchannels"):
+                results.append(current_group)
+                scans[scan_id]["results"] = list(results)
+            capturing = False
+
+            parts = line.split()
+            m = re.search(r"\((\d+)\)", " ".join(parts[2:]))
+            phys = int(m.group(1)) if m else None
+
+            current_group = {
+                "physical": phys,
+                "lock": None,
+                "ss": 0,
+                "snq": 0,
+                "subchannels": [],
+            }
+
+        elif line.startswith("LOCK:") and current_group is not None:
+            parts = line.split()
+            lock_part = next((p for p in parts if p.startswith("lock=")), None)
+            if lock_part:
+                locked_val = lock_part.split("=", 1)[1]
+                current_group["lock"] = (
+                    locked_val if locked_val.lower() != "none" else None
+                )
+                capturing = locked_val.lower() != "none"
+            ss_part = next((p for p in parts if p.startswith("ss=")), None)
+            if ss_part:
+                try:
+                    current_group["ss"] = int(ss_part.split("=", 1)[1])
+                except ValueError:
+                    current_group["ss"] = 0
+            snq_part = next((p for p in parts if p.startswith("snq=")), None)
+            if snq_part:
+                try:
+                    current_group["snq"] = int(snq_part.split("=", 1)[1])
+                except ValueError:
+                    current_group["snq"] = 0
+
+        elif line.startswith("PROGRAM") and capturing and current_group is not None:
+            after_colon = line.split(":", 1)[1].strip()
+            for m in re.finditer(r"(\d+\.\d+)\s+([A-Za-z0-9\-\s&/]+?)(?=\s+\d+\.\d+|$)", after_colon):
+                num = m.group(1).strip()
+                name = m.group(2).strip()
+                current_group["subchannels"].append({"num": num, "name": name})
+                scans[scan_id]["results"] = list(results) + [current_group]
+
+    proc.wait()
+
+    if current_group and current_group.get("subchannels"):
+        results.append(current_group)
+
+    scans[scan_id]["results"] = results
+    scans[scan_id]["finished"] = True
 
 def discover_device():
     """
@@ -173,6 +256,33 @@ def api_tuners():
         })
 
     return jsonify(tuners)
+
+
+@app.route("/api/scan/start", methods=["POST"])
+def api_scan_start():
+    """Start a channel scan asynchronously."""
+    data = request.json or {}
+    tuner_index = int(data.get("tuner", 0))
+
+    device_id, _ = discover_device()
+    if not device_id:
+        return jsonify({"error": "No device found"}), 503
+
+    scan_id = str(uuid.uuid4())
+    scans[scan_id] = {"finished": False, "results": []}
+    thread = threading.Thread(target=run_scan, args=(scan_id, device_id, tuner_index))
+    thread.daemon = True
+    thread.start()
+    return jsonify({"scan_id": scan_id})
+
+
+@app.route("/api/scan/status/<scan_id>")
+def api_scan_status(scan_id):
+    """Return progress for a running scan."""
+    data = scans.get(scan_id)
+    if not data:
+        return jsonify({"error": "Invalid scan id"}), 404
+    return jsonify({"finished": data["finished"], "results": data["results"]})
 
 @app.route("/api/scan", methods=["POST"])
 def scan_channels():

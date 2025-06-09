@@ -661,64 +661,33 @@
         " " +
         now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-      fetch("/api/scan", {
+      fetch("/api/scan/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tuner: selectedTuner }),
       })
         .then((r) => r.json())
         .then((data) => {
-          setScanning(false);
-
-          let rows = [];
-          if (data.status === "error" && data.message) {
-            // Parse any “LOCK: …” lines out of data.message
-            const rawLines = data.message.split("\n");
-            let current = null;
-            rawLines.forEach((line) => {
-              line = line.trim();
-              if (line.startsWith("SCANNING:")) {
-                if (current && current.physical && current.subchannels.length > 0) {
-                  rows.push(current);
+          if (!data.scan_id) throw new Error("Scan start failed");
+          const scanId = data.scan_id;
+          const poll = setInterval(() => {
+            fetch(`/api/scan/status/${scanId}`)
+              .then((r) => r.json())
+              .then((resp) => {
+                if (Array.isArray(resp.results)) {
+                  renderScanRows(resp.results);
                 }
-                const m = line.match(/\((\d+)\)/);
-                const phys = m ? parseInt(m[1], 10) : null;
-                current = { physical: phys, ss: 0, snq: 0, subchannels: [] };
-              } else if (line.startsWith("LOCK:") && current) {
-                const lockMatch = line.match(
-                  /^LOCK:\s*(\S+)\s*\(ss=(\d+)\s+snq=(\d+)\s+seq=(\d+)\)/i
-                );
-                if (lockMatch) {
-                  const lockMod = lockMatch[1];
-                  const ssVal = parseInt(lockMatch[2], 10);
-                  const snqVal = parseInt(lockMatch[3], 10);
-                  if (lockMod.toLowerCase() !== "none") {
-                    current.ss = ssVal;
-                    current.snq = snqVal;
-                  } else {
-                    current = null;
-                  }
+                if (resp.finished) {
+                  clearInterval(poll);
+                  setScanning(false);
                 }
-              } else if (line.startsWith("PROGRAM") && current) {
-                const progMatch = line.match(/^PROGRAM\s*\d+:\s*([\d\.]+)\s+(.+)$/i);
-                if (progMatch) {
-                  current.subchannels.push({
-                    num: progMatch[1].trim(),
-                    name: progMatch[2].trim(),
-                  });
-                }
-              }
-            });
-            if (current && current.physical && current.subchannels.length > 0) {
-              rows.push(current);
-            }
-          } else if (Array.isArray(data.results)) {
-            rows = data.results;
-          } else if (Array.isArray(data.channels)) {
-            rows = data.channels;
-          }
-
-          renderScanRows(rows);
+              })
+              .catch((err) => {
+                console.error(err);
+                clearInterval(poll);
+                setScanning(false);
+              });
+          }, 3000);
         })
         .catch((err) => {
           console.error(err);
