@@ -1,6 +1,7 @@
 import time
 import subprocess
 import re
+import threading
 from flask import Flask, jsonify, request, send_from_directory
 
 app = Flask(
@@ -29,6 +30,92 @@ FREQ_TO_CHANNEL = {
    677000000: 48, 683000000: 49, 689000000: 50,
    695000000: 51
 }
+
+# Store active scan jobs indexed by tuner number
+# Each entry: {"status": "running"|"done"|"error", "results": [...], "message": str}
+scan_jobs = {}
+scan_lock = threading.Lock()
+
+
+def _parse_scan_lines(lines):
+    """Parse scan output lines into a list of channel dicts."""
+    results = []
+    current_group = None
+    capturing = False
+
+    for raw in lines:
+        line = raw.strip()
+
+        if line.startswith("SCANNING:"):
+            if current_group and current_group.get("subchannels"):
+                results.append(current_group)
+            capturing = False
+
+            parts = line.split()
+            m = re.search(r"\((\d+)\)", " ".join(parts[2:]))
+            phys = int(m.group(1)) if m else None
+
+            current_group = {
+                "physical": phys,
+                "lock": None,
+                "ss": 0,
+                "snq": 0,
+                "subchannels": [],
+            }
+
+        elif line.startswith("LOCK:") and current_group is not None:
+            parts = line.split()
+            lock_part = next((p for p in parts if p.startswith("lock=")), None)
+            if lock_part:
+                locked_val = lock_part.split("=", 1)[1]
+                current_group["lock"] = (
+                    locked_val if locked_val.lower() != "none" else None
+                )
+                capturing = locked_val.lower() != "none"
+            ss_part = next((p for p in parts if p.startswith("ss=")), None)
+            if ss_part:
+                current_group["ss"] = int(ss_part.split("=", 1)[1])
+            snq_part = next((p for p in parts if p.startswith("snq=")), None)
+            if snq_part:
+                current_group["snq"] = int(snq_part.split("=", 1)[1])
+
+        elif line.startswith("PROGRAM") and capturing and current_group is not None:
+            after_colon = line.split(":", 1)[1].strip()
+            for m in re.finditer(
+                r"(\d+\.\d+)\s+([A-Za-z0-9\-\s&/]+?)(?=\s+\d+\.\d+|$)",
+                after_colon,
+            ):
+                num = m.group(1).strip()
+                name = m.group(2).strip()
+                current_group["subchannels"].append({"num": num, "name": name})
+
+    if current_group and current_group.get("subchannels"):
+        results.append(current_group)
+
+    return results
+
+
+def _run_scan(device_id, tuner_index):
+    """Background thread to perform scan and store results."""
+    cmd = ["hdhomerun_config", device_id, "scan", f"/tuner{tuner_index}"]
+    try:
+        proc = subprocess.run(
+            cmd,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        lines = proc.stdout.splitlines()
+        results = _parse_scan_lines(lines)
+        with scan_lock:
+            scan_jobs[tuner_index] = {"status": "done", "results": results}
+    except subprocess.CalledProcessError as e:
+        with scan_lock:
+            scan_jobs[tuner_index] = {
+                "status": "error",
+                "message": f"Scan failed: {e.stdout.strip()}",
+            }
 
 def discover_device():
     """
@@ -188,67 +275,32 @@ def scan_channels():
     if not device_id:
         return jsonify({"status": "error", "message": "No device found"}), 503
 
-    cmd = ["hdhomerun_config", device_id, "scan", f"/tuner{tuner_index}"]
-    try:
-        proc = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        lines = proc.stdout.splitlines()
-    except subprocess.CalledProcessError as e:
-        # Include scan log in error message
-        return jsonify({"status": "error", "message": f"Scan failed: {e.stdout.strip()}"}), 500
+    with scan_lock:
+        job = scan_jobs.get(tuner_index)
+        if job and job.get("status") == "running":
+            return jsonify({"status": "running"})
+        # mark job as running and spawn thread
+        scan_jobs[tuner_index] = {"status": "running"}
 
-    results = []
-    current_group = None
-    capturing = False
+    thread = threading.Thread(target=_run_scan, args=(device_id, tuner_index), daemon=True)
+    thread.start()
 
-    for raw in lines:
-        line = raw.strip()
+    return jsonify({"status": "started"})
 
-        if line.startswith("SCANNING:"):
-            if current_group and current_group.get("subchannels"):
-                results.append(current_group)
-            capturing = False
 
-            parts = line.split()
-            # parts: ["SCANNING:", "<frequency>", "(<physical>)"]
-            # e.g. "SCANNING: 605000000 (36)"
-            freq_hz = parts[1]
-            m = re.search(r"\((\d+)\)", " ".join(parts[2:]))
-            phys = int(m.group(1)) if m else None
-
-            current_group = {
-                "physical": phys,
-                "lock": None,
-                "ss": 0,
-                "snq": 0,
-                "subchannels": []
-            }
-
-        elif line.startswith("LOCK:") and current_group is not None:
-            parts = line.split()
-            lock_part = next((p for p in parts if p.startswith("lock=")), None)
-            if lock_part:
-                locked_val = lock_part.split("=", 1)[1]
-                current_group["lock"] = locked_val if locked_val.lower() != "none" else None
-                capturing = (locked_val.lower() != "none")
-            ss_part = next((p for p in parts if p.startswith("ss=")), None)
-            if ss_part:
-                current_group["ss"] = int(ss_part.split("=", 1)[1])
-            snq_part = next((p for p in parts if p.startswith("snq=")), None)
-            if snq_part:
-                current_group["snq"] = int(snq_part.split("=", 1)[1])
-
-        elif line.startswith("PROGRAM") and capturing and current_group is not None:
-            after_colon = line.split(":", 1)[1].strip()
-            # Regex to find "8.1 WAGM-HD", "8.2 WAGMFOX", etc.
-            for m in re.finditer(r"(\d+\.\d+)\s+([A-Za-z0-9\-\s&/]+?)(?=\s+\d+\.\d+|$)", after_colon):
-                num = m.group(1).strip()
-                name = m.group(2).strip()
-                current_group["subchannels"].append({"num": num, "name": name})
-
-    if current_group and current_group.get("subchannels"):
-        results.append(current_group)
-
-    return jsonify({"status": "success", "results": results})
+@app.route("/api/scan_results")
+def get_scan_results():
+    """Return the current scan status/results for a tuner."""
+    tuner_index = int(request.args.get("tuner", 0))
+    with scan_lock:
+        job = scan_jobs.get(tuner_index)
+        if not job:
+            return jsonify({"status": "none", "results": []})
+        if job.get("status") == "done":
+            return jsonify({"status": "done", "results": job.get("results", [])})
+        if job.get("status") == "error":
+            return jsonify({"status": "error", "message": job.get("message", "")})
+    return jsonify({"status": "running"})
 
 @app.route("/api/tune", methods=["POST"])
 def api_tune():
