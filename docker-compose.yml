@@ -1,6 +1,6 @@
 services:
   hdhomerun-tuner:
-    image: ghcr.io/OWNER/HDHomerunTuner:latest
+    image: ghcr.io/KoenigWX/HDHomerunTuner:latest
     container_name: hdh-tuner
     network_mode: "host"
     restart: unless-stopped
