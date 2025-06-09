@@ -60,6 +60,7 @@ def run_scan(scan_id, device_id, tuner_index):
         if line.startswith("SCANNING:"):
             if current_group and current_group.get("subchannels"):
                 results.append(current_group)
+                scans[scan_id]["results"] = list(results)
             capturing = False
 
             parts = line.split()
@@ -102,13 +103,15 @@ def run_scan(scan_id, device_id, tuner_index):
                 num = m.group(1).strip()
                 name = m.group(2).strip()
                 current_group["subchannels"].append({"num": num, "name": name})
+                scans[scan_id]["results"] = list(results) + [current_group]
 
     proc.wait()
 
     if current_group and current_group.get("subchannels"):
         results.append(current_group)
 
-    scans[scan_id] = {"finished": True, "results": results}
+    scans[scan_id]["results"] = results
+    scans[scan_id]["finished"] = True
 
 def discover_device():
     """

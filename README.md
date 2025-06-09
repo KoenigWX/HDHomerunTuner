@@ -44,9 +44,10 @@ docker build -t hdhomerun-tuner .
 docker run --net=host --rm hdhomerun-tuner
 ```
 
-Or use Docker Compose:
+Or use Docker Compose to pull the prebuilt image from GitHub Container Registry:
 
 ```bash
+docker compose pull
 docker compose up -d
 ```
 
@@ -55,4 +56,9 @@ The container must run in host networking mode so that `hdhomerun_config` can co
 ## Continuous Integration
 
 A GitHub Actions workflow located at `.github/workflows/build-and-push.yml` automatically builds the Docker image and pushes it to GitHub Container Registry whenever changes are pushed to the `main` branch.
+
+## Cloudflare Tunnels
+
+Channel scans now run asynchronously via `/api/scan/start` and `/api/scan/status/<id>`.
+This avoids timeouts that can occur when accessing the app through a Cloudflare Tunnel.
 
