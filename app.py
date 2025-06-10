@@ -454,7 +454,7 @@ def api_tune():
     # 3) Fetch streaminfo for subchannels. PSIP data may take a moment to
     # populate, so retry a few times before returning.
     subchannels = []
-    for _ in range(6):  # up to ~3s total
+    for _ in range(12):  # up to ~6s total
         streaminfo_raw = subprocess.getoutput(
             f"hdhomerun_config {device_id} get /tuner{tuner}/streaminfo"
         )

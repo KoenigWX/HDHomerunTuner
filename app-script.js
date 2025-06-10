@@ -190,30 +190,39 @@
         .catch(() => {});
     }
 
+    function startPolling() {
+      if (pollingEnabled) return;
+      pollingEnabled = true;
+      pollButton.classList.remove("btn-outline-success");
+      pollButton.classList.add("btn-outline-danger");
+      pollButton.innerHTML = '<i class="bi bi-sign-stop-fill"></i> Polling';
+      if (!chartInterval) chartInterval = setInterval(appendChartPoint, 1000);
+      if (!tunerInterval) tunerInterval = setInterval(fetchAndUpdateTuners, 1000);
+      fetchAndUpdateTuners();
+    }
+
+    function stopPolling() {
+      if (!pollingEnabled) return;
+      pollingEnabled = false;
+      pollButton.classList.remove("btn-outline-danger");
+      pollButton.classList.add("btn-outline-success");
+      pollButton.innerHTML = '<i class="bi bi-play-fill"></i> Paused';
+      clearInterval(chartInterval);
+      clearInterval(tunerInterval);
+      chartInterval = null;
+      tunerInterval = null;
+      if (scanPollInterval) {
+        clearInterval(scanPollInterval);
+        scanPollInterval = null;
+      }
+    }
+
     chartInterval = setInterval(appendChartPoint, 1000);
 
     const pollButton = document.getElementById("poll-button");
     pollButton.addEventListener("click", () => {
-      pollingEnabled = !pollingEnabled;
-      pollButton.classList.toggle("btn-outline-danger", pollingEnabled);
-      pollButton.classList.toggle("btn-outline-success", !pollingEnabled);
-      pollButton.innerHTML = pollingEnabled
-        ? '<i class="bi bi-sign-stop-fill"></i> Polling'
-        : '<i class="bi bi-play-fill"></i> Paused';
-
-      if (pollingEnabled) {
-        if (!chartInterval) chartInterval = setInterval(appendChartPoint, 1000);
-        if (!tunerInterval) tunerInterval = setInterval(fetchAndUpdateTuners, 1000);
-      } else {
-        clearInterval(chartInterval);
-        clearInterval(tunerInterval);
-        chartInterval = null;
-        tunerInterval = null;
-        if (scanPollInterval) {
-          clearInterval(scanPollInterval);
-          scanPollInterval = null;
-        }
-      }
+      if (pollingEnabled) stopPolling();
+      else startPolling();
     });
     // ───────────────────────────────────────────────────────────
     // 1) Populate Status badge once
@@ -590,16 +599,22 @@
         .then((r) => r.json())
         .then((data) => {
           // data.subchannels = [ { num: "8.1", name: "WAGM-HD" }, … ]
-          programSelect.hidden = false;
+          if (Array.isArray(data.subchannels) && data.subchannels.length > 0) {
+            programSelect.hidden = false;
             programSelect.disabled = false;
-          programSelect.innerHTML =
-            '<option value="" disabled selected>Select Program…</option>';
-          data.subchannels.forEach((p) => {
-            const opt = document.createElement("option");
-            opt.value = p.num;
-            opt.innerText = `${p.num} | ${p.name}`;
-            programSelect.appendChild(opt);
-          });
+            programSelect.innerHTML =
+              '<option value="" disabled selected>Select Program…</option>';
+            data.subchannels.forEach((p) => {
+              const opt = document.createElement("option");
+              opt.value = p.num;
+              opt.innerText = `${p.num} | ${p.name}`;
+              programSelect.appendChild(opt);
+            });
+          } else {
+            showToast("No subchannels found", true);
+            programSelect.hidden = true;
+            programSelect.disabled = true;
+          }
           updateChartTitle();
         })
         .catch((err) => {
