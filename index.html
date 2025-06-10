@@ -772,24 +772,12 @@
     }
 
     // ───────────────────────────────────────────────────────────
-    // 5) Force‐clear all tuner locks (calls /api/override?tuner=<n> for each tuner 0..3)
+    // 5) Force‐clear all tuner locks (POST /api/clear_locks)
     // ───────────────────────────────────────────────────────────
     document.getElementById("force-clear-btn").addEventListener("click", () => {
-      for (let tunerId = 0; tunerId < 4; tunerId++) {
-        fetch(`/api/override?tuner=${tunerId}`, {
-          method: "POST",
-        })
-          .then((r) => {
-            if (!r.ok) console.error(`Failed to clear tuner ${tunerId} lock`);
-            return r.json();
-          })
-          .then((resp) => {
-            // Optionally inspect resp.status or resp.message
-          })
-          .catch((err) => {
-            console.error(`Error unlocking tuner ${tunerId}:`, err);
-          });
-      }
+      fetch("/api/clear_locks", { method: "POST" }).catch((err) => {
+        console.error("Error clearing locks:", err);
+      });
     });
 
     // ───────────────────────────────────────────────────────────
