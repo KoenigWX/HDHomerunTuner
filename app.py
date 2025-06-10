@@ -491,7 +491,13 @@ def api_tune():
 
 @app.route("/api/program_info", methods=["POST"])
 def api_program_info():
-    """Return TS bitrate info for a specific program on a tuned tuner."""
+    """Return TS bitrate info for a specific program on a tuned tuner.
+
+    The HDHomeRun does not always report reliable bitrate data via the
+    ``streaminfo`` command. To improve accuracy we retrieve the current
+    bitrate from ``/tunerX/debug`` and fall back to ``streaminfo`` only for
+    the peak bitrate value.
+    """
 
     data = request.json or {}
     tuner_raw = data.get("tuner")
@@ -513,37 +519,56 @@ def api_program_info():
     )
     time.sleep(0.2)
 
+    debug_raw = subprocess.getoutput(
+        f"hdhomerun_config {device_id} get /tuner{tuner}/debug"
+    )
+
     streaminfo_raw = subprocess.getoutput(
         f"hdhomerun_config {device_id} get /tuner{tuner}/streaminfo"
     )
-    bitrate = None
-    max_bitrate = None
 
-    for line in streaminfo_raw.strip().splitlines():
-        parts = line.split()
-        if not parts or not parts[0].endswith(":"):
-            continue
-        try:
-            prog_id = int(parts[0].rstrip(":"))
-        except ValueError:
-            continue
+    def parse_debug_bps(raw: str) -> int | None:
+        """Extract current TS bitrate from /tuner/debug output."""
 
-        bps = peakbps = None
-        for part in parts:
-            if part.startswith("bps="):
-                try:
-                    bps = int(part.split("=", 1)[1])
-                except ValueError:
-                    bps = None
-            elif part.startswith("peakbps="):
-                try:
-                    peakbps = int(part.split("=", 1)[1])
-                except ValueError:
-                    peakbps = None
-        if prog_id == program_id:
-            bitrate = bps
-            max_bitrate = peakbps
+        lines = raw.strip().splitlines()
+        for prefix in ("ts:", "net:", "dev:"):
+            for line in lines:
+                line = line.strip()
+                if line.startswith(prefix):
+                    for part in line.split():
+                        if part.startswith("bps="):
+                            try:
+                                return int(part.split("=", 1)[1])
+                            except ValueError:
+                                return None
+        return None
+
+    def parse_peak_bps(raw: str, pid: int) -> int | None:
+        """Extract peak bitrate for a program from streaminfo."""
+
+        for line in raw.strip().splitlines():
+            parts = line.split()
+            if not parts or not parts[0].endswith(":"):
+                continue
+            try:
+                prog_id = int(parts[0].rstrip(":"))
+            except ValueError:
+                continue
+
+            if prog_id != pid:
+                continue
+
+            for part in parts:
+                if part.startswith("peakbps="):
+                    try:
+                        return int(part.split("=", 1)[1])
+                    except ValueError:
+                        return None
             break
+        return None
+
+    bitrate = parse_debug_bps(debug_raw)
+    max_bitrate = parse_peak_bps(streaminfo_raw, program_id)
 
     return jsonify({"bitrate": bitrate, "max_bitrate": max_bitrate})
 
