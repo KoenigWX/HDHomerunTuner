@@ -62,8 +62,9 @@
   // Update TS bitrate bar
   function updateTSBar(barId, textId, bitrate, maxBitrate) {
     const bar = document.getElementById(barId);
-    const txt = document.getElementById(textId);
-    if (!bar || !txt) return;
+    const txt = document.getElementById(textId); // displays mbps value
+    const pctEl = bar.querySelector("strong");
+    if (!bar || !txt || !pctEl) return;
 
     // Reset color classes on each update to avoid duplicates
     bar.className = "progress-bar progress-bar-striped progress-bar-animated";
@@ -71,7 +72,7 @@
     if (bitrate === null || maxBitrate === null || maxBitrate <= 0) {
       bar.style.width = "0%";
       txt.innerText = "--/-- mbps";
-      bar.innerText = "";
+      pctEl.innerText = "--%";
       bar.classList.add("bg-primary");
     } else {
       const mbps = bitrate / 1_000_000;
@@ -79,7 +80,7 @@
       const pct = Math.max(0, Math.floor((mbps / mbpsMax) * 100));
       bar.style.width = pct + "%";
       txt.innerText = `${mbps.toFixed(2)}/${mbpsMax.toFixed(2)} mbps`;
-      bar.innerText = `${pct}%`;
+      pctEl.innerText = `${pct}%`;
       bar.classList.add("bg-primary");
     }
   }
@@ -359,7 +360,7 @@
           tsInfo.hidden = false;
           updateTSBar(
             "ts-progress-bar",
-            "ts-percentage-text",
+            "ts-bitrate-text",
             info.bitrate,
             info.max_bitrate
           );
