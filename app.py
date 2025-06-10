@@ -3,7 +3,14 @@ import subprocess
 import re
 import threading
 import uuid
-from flask import Flask, jsonify, request, send_from_directory
+
+try:
+    from flask import Flask, jsonify, request, send_from_directory
+except ImportError as exc:  # pragma: no cover - runtime guard only
+    raise ImportError(
+        "Flask is required to run this application."
+        " Please install dependencies with 'pip install -r requirements.txt'."
+    ) from exc
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 
