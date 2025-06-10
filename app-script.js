@@ -68,6 +68,7 @@
     if (bitrate === null || maxBitrate === null) {
       bar.style.width = "0%";
       txt.innerText = "--/-- mbps";
+      bar.innerText = "";
       bar.classList.remove(
         "bg-primary",
         "bg-success",
@@ -83,6 +84,7 @@
       const pct = Math.floor((mbps / mbpsMax) * 100);
       bar.style.width = pct + "%";
       txt.innerText = `${mbps.toFixed(2)}/${mbpsMax.toFixed(2)} mbps`;
+      bar.innerText = `${pct}%`;
       bar.classList.remove(
         "bg-primary",
         "bg-success",
@@ -107,12 +109,14 @@
     if (!btn) return;
 
     if (isScanning) {
+      scanningActive = true;
       btn.disabled = true;
       btn.innerHTML = `
         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
         &nbsp;Scanning…
       `;
     } else {
+      scanningActive = false;
       btn.disabled = false;
       btn.innerHTML = "Scan Again";
     }
@@ -145,6 +149,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     let selectedTuner = null;
     let pollingEnabled = true; // controls whether realtime points are added
+    let scanningActive = false; // true while channel scan is running
     let tunedChannel = null;
     let tunedProgram = null;
     let tunedProgramId = null;
@@ -188,7 +193,7 @@
     }
 
     function appendChartPoint() {
-      if (!pollingEnabled || selectedTuner === null) return;
+      if (!pollingEnabled || scanningActive || selectedTuner === null) return;
       fetch("api/tuners")
         .then((r) => r.json())
         .then((tuners) => {
