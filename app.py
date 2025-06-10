@@ -3,7 +3,6 @@ import subprocess
 import re
 import threading
 import uuid
-from flask import Flask, jsonify, request, send_from_directory
 
 try:
     from flask import Flask, jsonify, request, send_from_directory
@@ -98,7 +97,6 @@ def run_scan(scan_id, device_id, tuner_index):
                 current_group.get("lock") is not None
                 or current_group.get("subchannels")
             ):
-            if current_group is not None:
                 results.append(current_group)
                 scans[scan_id]["results"] = list(results)
             capturing = False
@@ -140,24 +138,6 @@ def run_scan(scan_id, device_id, tuner_index):
                         current_group["snq"] = int(snq_val)
                     except ValueError:
                         current_group["snq"] = 0
-            parts = line.split()
-            lock_part = next((p for p in parts if p.startswith("lock=")), None)
-            if lock_part:
-                locked_val = lock_part.split("=", 1)[1]
-                current_group["lock"] = locked_val if locked_val.lower() != "none" else None
-                capturing = locked_val.lower() != "none"
-            ss_part = next((p for p in parts if p.startswith("ss=")), None)
-            if ss_part:
-                try:
-                    current_group["ss"] = int(ss_part.split("=", 1)[1])
-                except ValueError:
-                    current_group["ss"] = 0
-            snq_part = next((p for p in parts if p.startswith("snq=")), None)
-            if snq_part:
-                try:
-                    current_group["snq"] = int(snq_part.split("=", 1)[1])
-                except ValueError:
-                    current_group["snq"] = 0
 
         elif line.startswith("PROGRAM") and capturing and current_group is not None:
             after_colon = line.split(":", 1)[1].strip()
@@ -172,7 +152,6 @@ def run_scan(scan_id, device_id, tuner_index):
     if current_group is not None and (
         current_group.get("lock") is not None or current_group.get("subchannels")
     ):
-    if current_group is not None:
         results.append(current_group)
 
     scans[scan_id]["results"] = results
@@ -381,7 +360,6 @@ def scan_channels():
         return jsonify({"status": "error", "message": f"Scan failed: {e.stdout.strip()}"}), 500
 
     results: list[dict] = []
-    results = []
     current_group = None
     capturing = False
 
@@ -392,7 +370,6 @@ def scan_channels():
             if current_group is not None and (
                 current_group.get("lock") is not None or current_group.get("subchannels")
             ):
-            if current_group is not None:
                 results.append(current_group)
             capturing = False
 
@@ -436,31 +413,6 @@ def scan_channels():
 
         elif line.startswith("PROGRAM") and capturing and current_group is not None:
             after_colon = line.split(":", 1)[1].strip()
-            # parts: ["SCANNING:", "<frequency>", "(<physical>)"]
-            # e.g. "SCANNING: 605000000 (36)"
-            freq_hz = parts[1]
-            m = re.search(r"\((\d+)\)", " ".join(parts[2:]))
-            phys = int(m.group(1)) if m else None
-
-            current_group = {"physical": phys, "lock": None, "ss": 0, "snq": 0, "subchannels": []}
-
-        elif line.startswith("LOCK:") and current_group is not None:
-            parts = line.split()
-            lock_part = next((p for p in parts if p.startswith("lock=")), None)
-            if lock_part:
-                locked_val = lock_part.split("=", 1)[1]
-                current_group["lock"] = locked_val if locked_val.lower() != "none" else None
-                capturing = locked_val.lower() != "none"
-            ss_part = next((p for p in parts if p.startswith("ss=")), None)
-            if ss_part:
-                current_group["ss"] = int(ss_part.split("=", 1)[1])
-            snq_part = next((p for p in parts if p.startswith("snq=")), None)
-            if snq_part:
-                current_group["snq"] = int(snq_part.split("=", 1)[1])
-
-        elif line.startswith("PROGRAM") and capturing and current_group is not None:
-            after_colon = line.split(":", 1)[1].strip()
-            # Regex to find "8.1 WAGM-HD", "8.2 WAGMFOX", etc.
             for m in re.finditer(r"(\d+\.\d+)\s+(.+?)(?=\s+\d+\.\d+|$)", after_colon):
                 num = m.group(1).strip()
                 name = m.group(2).strip()
@@ -469,7 +421,6 @@ def scan_channels():
     if current_group is not None and (
         current_group.get("lock") is not None or current_group.get("subchannels")
     ):
-    if current_group is not None:
         results.append(current_group)
 
     return jsonify({"status": "success", "results": results})
