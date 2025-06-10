@@ -382,6 +382,8 @@
     updateProgressBar("seq-progress-bar", "seq-percentage-text", null, () => {});
   }
 
+  let scanHasRun = false;
+
   // Toggle the "Scan Again" button into a spinner state
   function setScanning(isScanning) {
     const btn = document.getElementById("scan-again-btn");
@@ -395,12 +397,13 @@
       `;
     } else {
       btn.disabled = false;
-      btn.innerHTML = "Scan Again";
+      btn.innerHTML = scanHasRun ? "Scan Again" : "Scan for Channels";
     }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     let selectedTuner = null;
+    setScanning(false);
 
     // ───────────────────────────────────────────────────────────
     // Chart.js (time‐series, not streaming plugin)
@@ -679,6 +682,7 @@
                 }
                 if (resp.finished) {
                   clearInterval(poll);
+                  scanHasRun = true;
                   setScanning(false);
                 }
               })
