@@ -65,33 +65,21 @@
     const txt = document.getElementById(textId);
     if (!bar || !txt) return;
 
-    if (bitrate === null || maxBitrate === null) {
+    // Reset color classes on each update to avoid duplicates
+    bar.className = "progress-bar progress-bar-striped progress-bar-animated";
+
+    if (bitrate === null || maxBitrate === null || maxBitrate <= 0) {
       bar.style.width = "0%";
       txt.innerText = "--/-- mbps";
       bar.innerText = "";
-      bar.classList.remove(
-        "bg-primary",
-        "bg-success",
-        "bg-warning",
-        "bg-danger",
-        "bg-secondary"
-      );
       bar.classList.add("bg-primary");
     } else {
-      // Convert to mbps
       const mbps = bitrate / 1_000_000;
       const mbpsMax = maxBitrate / 1_000_000;
-      const pct = Math.floor((mbps / mbpsMax) * 100);
+      const pct = Math.max(0, Math.floor((mbps / mbpsMax) * 100));
       bar.style.width = pct + "%";
       txt.innerText = `${mbps.toFixed(2)}/${mbpsMax.toFixed(2)} mbps`;
       bar.innerText = `${pct}%`;
-      bar.classList.remove(
-        "bg-primary",
-        "bg-success",
-        "bg-warning",
-        "bg-danger",
-        "bg-secondary"
-      );
       bar.classList.add("bg-primary");
     }
   }
