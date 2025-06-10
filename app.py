@@ -494,16 +494,22 @@ def api_program_info():
     """Return TS bitrate info for a specific program on a tuned tuner."""
 
     data = request.json or {}
-    tuner = data.get("tuner")
-    program = data.get("program")  # program id as integer
+    tuner_raw = data.get("tuner")
+    program_raw = data.get("program")  # program id
+
+    try:
+        tuner = int(tuner_raw)
+        program_id = int(program_raw)
+    except (TypeError, ValueError):
+        return jsonify({"bitrate": None, "max_bitrate": None}), 400
 
     device_id, _ = discover_device()
-    if not device_id or tuner is None or program is None:
-        return jsonify({"bitrate": None, "max_bitrate": None}), 400
+    if not device_id:
+        return jsonify({"bitrate": None, "max_bitrate": None}), 503
 
     # Select the program on the tuner
     subprocess.getoutput(
-        f"hdhomerun_config {device_id} set /tuner{tuner}/program {program}"
+        f"hdhomerun_config {device_id} set /tuner{tuner}/program {program_id}"
     )
     time.sleep(0.2)
 
@@ -534,7 +540,7 @@ def api_program_info():
                     peakbps = int(part.split("=", 1)[1])
                 except ValueError:
                     peakbps = None
-        if prog_id == int(program):
+        if prog_id == program_id:
             bitrate = bps
             max_bitrate = peakbps
             break

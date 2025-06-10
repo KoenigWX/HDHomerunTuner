@@ -16,6 +16,16 @@ Ongoing maintenance and improvements are handled primarily through ChatGPT.
 - Clear tuner locks directly from the interface
 - View real-time signal quality using [Apache ECharts](https://echarts.apache.org)
 
+## API Endpoints
+
+The server exposes a simple JSON API used by the web UI. Useful endpoints include:
+
+- `GET /api/status` – check device connectivity.
+- `GET /api/tuners` – list status for all tuners.
+- `POST /api/tune` – tune a tuner to a physical channel. Body `{tuner, channel}`.
+- `POST /api/program_info` – return bitrate info for a specific program on a tuned tuner. Body `{tuner, program}`.
+- `POST /api/scan/start` and `GET /api/scan/status/<id>` – run a channel scan asynchronously.
+
 ## Local Development
 
 1. Install the required Python packages:
