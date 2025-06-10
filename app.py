@@ -459,12 +459,14 @@ def api_tune():
             f"hdhomerun_config {device_id} get /tuner{tuner}/streaminfo"
         )
         for line in streaminfo_raw.strip().splitlines():
-            m_ch = re.search(r"vchannel=([0-9.]+)", line)
-            m_name = re.search(r"name=([^\s]+(?:\s[^\s]+)*)", line)
-            if m_ch and m_name:
-                subchannels.append(
-                    {"num": m_ch.group(1), "name": m_name.group(1).strip()}
-                )
+            num = name = None
+            for part in line.split():
+                if part.startswith("vchannel="):
+                    num = part.split("=", 1)[1]
+                elif part.startswith("name="):
+                    name = part.split("=", 1)[1]
+            if num and name:
+                subchannels.append({"num": num, "name": name})
         if subchannels:
             break
         time.sleep(0.5)
