@@ -469,6 +469,7 @@
                   scanPollInterval = null;
                   scanHasRun = true;
                   setScanning(false);
+                  collapseAllScanRows();
                 }
               })
               .catch((err) => {
@@ -489,7 +490,7 @@
     // ───────────────────────────────────────────────────────────────────
     // Helper: renderScanRows(arrayOf { physical, ss, snq, subchannels:[…] })
     // ───────────────────────────────────────────────────────────────────
-    function renderScanRows(rows) {
+function renderScanRows(rows) {
       const tbody = document.getElementById("scan-table-body");
       tbody.innerHTML = "";
 
@@ -565,10 +566,20 @@
           innerTable.appendChild(innerBody);
           tdNested.appendChild(innerTable);
           row2.appendChild(tdNested);
-          tbody.appendChild(row2);
-        }
-      });
+      tbody.appendChild(row2);
     }
+  });
+}
+
+  // Collapse any expanded subchannel rows in the scan table
+  function collapseAllScanRows() {
+    document
+      .querySelectorAll('#scan-table-body .collapse.show')
+      .forEach((el) => {
+        const inst = bootstrap.Collapse.getOrCreateInstance(el);
+        inst.hide();
+      });
+  }
 
     // ───────────────────────────────────────────────────────────
     // 5) Force‐clear all tuner locks via POST /api/clear_locks
