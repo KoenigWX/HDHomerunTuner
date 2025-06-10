@@ -136,11 +136,13 @@
     let pollingEnabled = true; // controls whether realtime points are added
     let tunedChannel = null;
     let tunedProgram = null;
+    let tunedProgramId = null;
 
     // Track interval IDs so we can fully stop polling when requested
     let chartInterval = null;
     let tunerInterval = null;
     let scanPollInterval = null;
+    let programInfoInterval = null;
 
     // ───────────────────────────────────────────────────────────
     // Apache ECharts setup for realtime updates
@@ -198,7 +200,10 @@
       pollButton.innerHTML = '<i class="bi bi-sign-stop-fill"></i> Polling';
       if (!chartInterval) chartInterval = setInterval(appendChartPoint, 1000);
       if (!tunerInterval) tunerInterval = setInterval(fetchAndUpdateTuners, 1000);
+      if (tunedProgramId !== null && !programInfoInterval)
+        programInfoInterval = setInterval(fetchAndUpdateProgramInfo, 1000);
       fetchAndUpdateTuners();
+      if (tunedProgramId !== null) fetchAndUpdateProgramInfo();
     }
 
     function stopPolling() {
@@ -209,8 +214,10 @@
       pollButton.innerHTML = '<i class="bi bi-play-fill"></i> Paused';
       clearInterval(chartInterval);
       clearInterval(tunerInterval);
+      clearInterval(programInfoInterval);
       chartInterval = null;
       tunerInterval = null;
+      programInfoInterval = null;
       if (scanPollInterval) {
         clearInterval(scanPollInterval);
         scanPollInterval = null;
@@ -335,6 +342,31 @@
     fetchAndUpdateTuners();
     tunerInterval = setInterval(fetchAndUpdateTuners, 1000);
 
+    function fetchAndUpdateProgramInfo() {
+      if (!pollingEnabled) return;
+      if (selectedTuner === null || tunedProgramId === null) return;
+      fetch("api/program_info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tuner: selectedTuner, program: tunedProgramId }),
+      })
+        .then((r) => r.json())
+        .then((info) => {
+          tsInfo.hidden = false;
+          updateTSBar(
+            "ts-progress-bar",
+            "ts-percentage-text",
+            info.bitrate,
+            info.max_bitrate
+          );
+          updateChartTitle();
+        })
+        .catch((err) => {
+          console.error(err);
+          tsInfo.hidden = true;
+        });
+    }
+
     // ───────────────────────────────────────────────────────────
     // 3) Tuner selection click handler
     // ───────────────────────────────────────────────────────────
@@ -349,6 +381,10 @@
 
         // Hide TS info & program dropdown until tune
         document.getElementById("ts-info").hidden = true;
+        clearInterval(programInfoInterval);
+        programInfoInterval = null;
+        tunedProgramId = null;
+        tunedProgram = null;
         const programSelect = document.getElementById("program-select");
         programSelect.disabled = true;
         programSelect.hidden = true;
@@ -388,6 +424,7 @@
           s.data.length = 0;
         });
         signalChart.setOption({ series: chartSeries });
+        updateChartTitle();
       });
     });
 
@@ -585,6 +622,9 @@
       const chVal = parseInt(channelInput.value, 10);
       tunedChannel = chVal;
       tunedProgram = null;
+      tunedProgramId = null;
+      clearInterval(programInfoInterval);
+      programInfoInterval = null;
       updateChartTitle();
       programSelect.hidden = true;
       programSelect.innerHTML = '<option value="" disabled selected>Select Program…</option>';
@@ -630,30 +670,24 @@
     // 7) When a program is chosen, fetch its TS info
     // ───────────────────────────────────────────────────────────
     programSelect.addEventListener("change", () => {
-      const progId = programSelect.value;
+      const progIdStr = programSelect.value;
+      const progId = parseInt(progIdStr, 10);
       const selectedOpt = programSelect.options[programSelect.selectedIndex];
       const vchan = selectedOpt ? selectedOpt.dataset.vchannel : "";
-      if (!progId) {
+      if (isNaN(progId)) {
         tsInfo.hidden = true;
+        clearInterval(programInfoInterval);
+        programInfoInterval = null;
+        tunedProgramId = null;
+        tunedProgram = null;
+        updateChartTitle();
         return;
       }
       tunedProgram = vchan;
-      fetch("api/program_info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tuner: selectedTuner, program: progId }),
-      })
-        .then((r) => r.json())
-        .then((info) => {
-          // info = { bitrate: <bps>, max_bitrate: <bps> }
-          tsInfo.hidden = false;
-          updateTSBar("ts-progress-bar", "ts-percentage-text", info.bitrate, info.max_bitrate);
-          updateChartTitle();
-        })
-        .catch((err) => {
-          console.error(err);
-          tsInfo.hidden = true;
-        });
+      tunedProgramId = progId;
+      clearInterval(programInfoInterval);
+      programInfoInterval = setInterval(fetchAndUpdateProgramInfo, 1000);
+      fetchAndUpdateProgramInfo();
     });
 
     // ───────────────────────────────────────────────────────────
