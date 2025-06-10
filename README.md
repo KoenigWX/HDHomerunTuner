@@ -1,5 +1,7 @@
 # HDHomerunTuner
 
+**Version 1.0**
+
 A web-based manual tuner interface for SiliconDust HDHomeRun devices. The application is implemented in [Flask](https://flask.palletsprojects.com/) and includes a lightweight Bootstrap front end. It exposes several API endpoints for controlling tuners and viewing device status.
 
 ## Project Support
@@ -15,6 +17,8 @@ Ongoing maintenance and improvements are handled primarily through ChatGPT.
 - Retrieve bitrate information for a program
 - Clear tuner locks directly from the interface
 - View real-time signal quality using [Apache ECharts](https://echarts.apache.org)
+- Channel scan results collapse/expand under each physical channel
+- Real-time charts automatically pause while a channel scan is running
 
 ## API Endpoints
 
