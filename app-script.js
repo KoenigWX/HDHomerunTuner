@@ -137,6 +137,11 @@
     let tunedChannel = null;
     let tunedProgram = null;
 
+    // Track interval IDs so we can fully stop polling when requested
+    let chartInterval = null;
+    let tunerInterval = null;
+    let scanPollInterval = null;
+
     // ───────────────────────────────────────────────────────────
     // Apache ECharts setup for realtime updates
     // ───────────────────────────────────────────────────────────
@@ -185,7 +190,7 @@
         .catch(() => {});
     }
 
-    setInterval(appendChartPoint, 1000);
+    chartInterval = setInterval(appendChartPoint, 1000);
 
     const pollButton = document.getElementById("poll-button");
     pollButton.addEventListener("click", () => {
@@ -195,6 +200,20 @@
       pollButton.innerHTML = pollingEnabled
         ? '<i class="bi bi-sign-stop-fill"></i> Polling'
         : '<i class="bi bi-play-fill"></i> Paused';
+
+      if (pollingEnabled) {
+        if (!chartInterval) chartInterval = setInterval(appendChartPoint, 1000);
+        if (!tunerInterval) tunerInterval = setInterval(fetchAndUpdateTuners, 1000);
+      } else {
+        clearInterval(chartInterval);
+        clearInterval(tunerInterval);
+        chartInterval = null;
+        tunerInterval = null;
+        if (scanPollInterval) {
+          clearInterval(scanPollInterval);
+          scanPollInterval = null;
+        }
+      }
     });
     // ───────────────────────────────────────────────────────────
     // 1) Populate Status badge once
@@ -305,7 +324,7 @@
     }
 
     fetchAndUpdateTuners();
-    setInterval(fetchAndUpdateTuners, 1000);
+    tunerInterval = setInterval(fetchAndUpdateTuners, 1000);
 
     // ───────────────────────────────────────────────────────────
     // 3) Tuner selection click handler
@@ -386,7 +405,8 @@
         .then((data) => {
           if (!data.scan_id) throw new Error("Scan start failed");
           const scanId = data.scan_id;
-          const poll = setInterval(() => {
+          scanPollInterval = setInterval(() => {
+            if (!pollingEnabled) return;
             fetch(`api/scan/status/${scanId}`)
               .then((r) => r.json())
               .then((resp) => {
@@ -394,14 +414,16 @@
                   renderScanRows(resp.results);
                 }
                 if (resp.finished) {
-                  clearInterval(poll);
+                  clearInterval(scanPollInterval);
+                  scanPollInterval = null;
                   scanHasRun = true;
                   setScanning(false);
                 }
               })
               .catch((err) => {
                 console.error(err);
-                clearInterval(poll);
+                clearInterval(scanPollInterval);
+                scanPollInterval = null;
                 setScanning(false);
               });
           }, 3000);
