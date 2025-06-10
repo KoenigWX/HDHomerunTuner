@@ -241,21 +241,26 @@
                 <!-- TRANSPORT STREAM BITRATE (hidden until program chosen) -->
                 <div id="ts-info" class="mb-2" hidden>
                   <h5><strong>Transport Stream Bitrate:</strong></h5>
-                  <div
-                    class="progress"
-                    role="progressbar"
-                    aria-valuenow="0"
-                    aria-valuemin="0"
-                    aria-valuemax="100"
-                    style="height: 50px; font-size: 1.25rem;"
-                  >
+                  <div class="d-flex align-items-center">
                     <div
-                      id="ts-progress-bar"
-                      class="progress-bar progress-bar-striped progress-bar-animated bg-secondary"
-                      style="width: 0%;"
+                      class="progress flex-grow-1 me-3"
+                      role="progressbar"
+                      aria-valuenow="0"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                      style="height: 50px;"
                     >
-                      <strong id="ts-percentage-text">--/-- mbps</strong>
+                      <div
+                        id="ts-progress-bar"
+                        class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                        style="width: 0%;"
+                      ></div>
                     </div>
+                    <strong
+                      id="ts-percentage-text"
+                      style="font-size: 1.25rem;"
+                      >--/-- mbps</strong
+                    >
                   </div>
                 </div>
               </div>
