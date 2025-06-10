@@ -429,7 +429,7 @@
 
     function appendChartPoint() {
       if (!chartPolling || selectedTuner === null) return;
-      fetch("/api/tuners")
+      fetch("api/tuners")
         .then((r) => r.json())
         .then((tuners) => {
           const t = tuners.find((x) => x.index === selectedTuner);
@@ -457,7 +457,7 @@
     // ───────────────────────────────────────────────────────────
     // 1) Populate Status badge once
     // ───────────────────────────────────────────────────────────
-    fetch("/api/status")
+    fetch("api/status")
       .then((r) => r.json())
       .then((data) => {
         if (data.connected) {
@@ -481,7 +481,7 @@
     // ───────────────────────────────────────────────────────────
 
     function fetchAndUpdateTuners() {
-      fetch("/api/tuners")
+      fetch("api/tuners")
         .then((r) => r.json())
         .then((tuners) => {
           tuners.forEach((t) => {
@@ -585,7 +585,7 @@
         document.getElementById("tune-button").classList.add("disabled");
 
         // Clear progress bars right away for this tuner
-        fetch("/api/tuners")
+        fetch("api/tuners")
           .then((r) => r.json())
           .then((tuners) => {
             const chosen = tuners.find((x) => x.index === selectedTuner);
@@ -634,7 +634,7 @@
         " " +
         now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-      fetch("/api/scan/start", {
+      fetch("api/scan/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tuner: selectedTuner }),
@@ -644,7 +644,7 @@
           if (!data.scan_id) throw new Error("Scan start failed");
           const scanId = data.scan_id;
           const poll = setInterval(() => {
-            fetch(`/api/scan/status/${scanId}`)
+            fetch(`api/scan/status/${scanId}`)
               .then((r) => r.json())
               .then((resp) => {
                 if (Array.isArray(resp.results)) {
@@ -749,7 +749,7 @@
     // 5) Force‐clear all tuner locks via POST /api/clear_locks
     // ───────────────────────────────────────────────────────────
     document.getElementById("force-clear-btn").addEventListener("click", () => {
-      fetch("/api/clear_locks", { method: "POST" })
+      fetch("api/clear_locks", { method: "POST" })
         .then((r) => {
           if (!r.ok) console.error("Failed to clear tuner locks");
           return r.json();
@@ -808,7 +808,7 @@
       programSelect.disabled = true;
       tsInfo.hidden = true;
 
-      fetch("/api/tune", {
+      fetch("api/tune", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tuner: selectedTuner, channel: chVal }),
@@ -844,7 +844,7 @@
         tsInfo.hidden = true;
         return;
       }
-      fetch("/api/program_info", {
+      fetch("api/program_info", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tuner: selectedTuner, program: prog }),
