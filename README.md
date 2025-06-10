@@ -19,6 +19,10 @@ A web-based manual tuner interface for SiliconDust HDHomeRun devices. The applic
    pip install -r requirements.txt
    ```
 
+   If you encounter `ModuleNotFoundError: No module named 'flask'`,
+   ensure the above commands completed successfully and that your
+   virtual environment is activated.
+
 2. Ensure `hdhomerun_config` is installed on your system. On Debian-based systems:
 
    ```bash
