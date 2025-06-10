@@ -115,28 +115,22 @@ def run_scan(scan_id, device_id, tuner_index):
             }
 
         elif line.startswith("LOCK:") and current_group is not None:
-            parts = line.split()
-            lock_part = next((p for p in parts if p.startswith("lock=")), None)
-            if lock_part:
-                locked_val = lock_part.split("=", 1)[1]
-                current_group["lock"] = (
-                    locked_val if locked_val.lower() != "none" else None
-                )
-                capturing = locked_val.lower() != "none"
-
-            ss_part = next((p for p in parts if p.startswith("ss=")), None)
-            if ss_part:
-                try:
-                    current_group["ss"] = int(ss_part.split("=", 1)[1])
-                except ValueError:
-                    current_group["ss"] = 0
-
-            snq_part = next((p for p in parts if p.startswith("snq=")), None)
-            if snq_part:
-                try:
-                    current_group["snq"] = int(snq_part.split("=", 1)[1])
-                except ValueError:
-                    current_group["snq"] = 0
+            # Example: "LOCK: 8vsb (ss=85 snq=88 seq=100)" or "LOCK: none (ss=0 snq=0 seq=0)"
+            m = re.search(r"LOCK:\s+(\S+)(?:\s+\(ss=(\d+)\s+snq=(\d+)\s+seq=(\d+)\))?", line)
+            if m:
+                lock_val, ss_val, snq_val, _ = m.groups()
+                current_group["lock"] = lock_val if lock_val.lower() != "none" else None
+                capturing = lock_val.lower() != "none"
+                if ss_val is not None:
+                    try:
+                        current_group["ss"] = int(ss_val)
+                    except ValueError:
+                        current_group["ss"] = 0
+                if snq_val is not None:
+                    try:
+                        current_group["snq"] = int(snq_val)
+                    except ValueError:
+                        current_group["snq"] = 0
 
         elif line.startswith("PROGRAM") and capturing and current_group is not None:
             after_colon = line.split(":", 1)[1].strip()
@@ -393,28 +387,22 @@ def scan_channels():
             }
 
         elif line.startswith("LOCK:") and current_group is not None:
-            parts = line.split()
-            lock_part = next((p for p in parts if p.startswith("lock=")), None)
-            if lock_part:
-                locked_val = lock_part.split("=", 1)[1]
-                current_group["lock"] = (
-                    locked_val if locked_val.lower() != "none" else None
-                )
-                capturing = locked_val.lower() != "none"
-
-            ss_part = next((p for p in parts if p.startswith("ss=")), None)
-            if ss_part:
-                try:
-                    current_group["ss"] = int(ss_part.split("=", 1)[1])
-                except ValueError:
-                    current_group["ss"] = 0
-
-            snq_part = next((p for p in parts if p.startswith("snq=")), None)
-            if snq_part:
-                try:
-                    current_group["snq"] = int(snq_part.split("=", 1)[1])
-                except ValueError:
-                    current_group["snq"] = 0
+            # Example: "LOCK: qam256 (ss=80 snq=90 seq=100)" or "LOCK: none (ss=0 snq=0 seq=0)"
+            m = re.search(r"LOCK:\s+(\S+)(?:\s+\(ss=(\d+)\s+snq=(\d+)\s+seq=(\d+)\))?", line)
+            if m:
+                lock_val, ss_val, snq_val, _ = m.groups()
+                current_group["lock"] = lock_val if lock_val.lower() != "none" else None
+                capturing = lock_val.lower() != "none"
+                if ss_val is not None:
+                    try:
+                        current_group["ss"] = int(ss_val)
+                    except ValueError:
+                        current_group["ss"] = 0
+                if snq_val is not None:
+                    try:
+                        current_group["snq"] = int(snq_val)
+                    except ValueError:
+                        current_group["snq"] = 0
 
         elif line.startswith("PROGRAM") and capturing and current_group is not None:
             after_colon = line.split(":", 1)[1].strip()
