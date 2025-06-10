@@ -107,6 +107,30 @@
     }
   }
 
+  // Display a Bootstrap toast message
+  function showToast(msg, isError = false) {
+    const container = document.getElementById("toast-container");
+    if (!container) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = `toast align-items-center text-bg-${
+      isError ? "danger" : "success"
+    } border-0`;
+    wrapper.role = "alert";
+    wrapper.ariaLive = "assertive";
+    wrapper.ariaAtomic = "true";
+    wrapper.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body">${msg}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>`;
+
+    container.appendChild(wrapper);
+    const t = new bootstrap.Toast(wrapper, { delay: 3000 });
+    t.show();
+    wrapper.addEventListener("hidden.bs.toast", () => wrapper.remove());
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     let selectedTuner = null;
     let chartPolling = true; // controls whether realtime points are added
@@ -461,11 +485,17 @@
     document.getElementById("force-clear-btn").addEventListener("click", () => {
       fetch("api/clear_locks", { method: "POST" })
         .then((r) => {
-          if (!r.ok) console.error("Failed to clear tuner locks");
+          if (r.ok) {
+            showToast("All tuner locks cleared");
+          } else {
+            showToast("Failed to clear tuner locks", true);
+            console.error("Failed to clear tuner locks");
+          }
           return r.json();
         })
         .catch((err) => {
           console.error("Error clearing locks:", err);
+          showToast("Error clearing tuner locks", true);
         });
     });
 
