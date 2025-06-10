@@ -445,8 +445,10 @@ def api_tune():
     subprocess.getoutput(f"hdhomerun_config {device_id} set /tuner{tuner}/lockkey none")
     time.sleep(0.1)
 
-    # 2) Set channel to "8vsb:<channel>"
-    subprocess.getoutput(f"hdhomerun_config {device_id} set /tuner{tuner}/channel 8vsb:{channel}")
+    # 2) Set channel using auto-detected modulation
+    subprocess.getoutput(
+        f"hdhomerun_config {device_id} set /tuner{tuner}/channel auto:{channel}"
+    )
     time.sleep(1)  # allow PSIP to populate
 
     # 3) Fetch streaminfo for subchannels. PSIP data may take a moment to
