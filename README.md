@@ -35,7 +35,7 @@ Ongoing maintenance and improvements are handled primarily through ChatGPT.
    sudo apt-get install hdhomerun-config
    ```
 
-3. Run the application:
+3. Run the application for local development:
 
    ```bash
    python app.py
@@ -43,12 +43,18 @@ Ongoing maintenance and improvements are handled primarily through ChatGPT.
 
    The web UI will be available at <http://localhost:5070>.
 
+   For production, use Gunicorn:
+
+   ```bash
+   gunicorn --bind 0.0.0.0:5070 app:app
+   ```
+
 Apache ECharts is loaded via CDN in `index.html`, so no additional
 JavaScript build step is required.
 
 ## Docker Usage
 
-The repository contains a `Dockerfile` and `docker-compose.yml` for running the tuner in a container. The container exposes port `5070`.
+The repository contains a `Dockerfile` and `docker-compose.yml` for running the tuner in a container. The container exposes port `5070` and runs the app with Gunicorn.
 
 Build the image and run it with Docker:
 

@@ -25,5 +25,5 @@ COPY app-script.js /app/
 # 6) Expose port 5070
 EXPOSE 5070
 
-# 7) Run the Flask app using the venv's python
-CMD ["python", "app.py"]
+# 7) Run the Flask app with Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5070", "app:app"]
