@@ -3,6 +3,7 @@ import subprocess
 import re
 import threading
 import uuid
+from flask import Flask, jsonify, request, send_from_directory
 
 try:
     from flask import Flask, jsonify, request, send_from_directory
@@ -85,7 +86,7 @@ def run_scan(scan_id, device_id, tuner_index):
         scans[scan_id] = {"finished": True, "results": []}
         return
 
-    results = []
+    results: list[dict] = []
     current_group = None
     capturing = False
 
@@ -93,14 +94,26 @@ def run_scan(scan_id, device_id, tuner_index):
         line = raw.strip()
 
         if line.startswith("SCANNING:"):
+            if current_group is not None and (
+                current_group.get("lock") is not None
+                or current_group.get("subchannels")
+            ):
             if current_group is not None:
                 results.append(current_group)
                 scans[scan_id]["results"] = list(results)
             capturing = False
 
             parts = line.split()
-            m = re.search(r"\((\d+)\)", " ".join(parts[2:]))
+            freq = None
+            try:
+                freq = int(parts[1])
+            except (IndexError, ValueError):
+                pass
+
+            m = re.search(r"\((?:us-bcast:)?(\d+)\)", line)
             phys = int(m.group(1)) if m else None
+            if phys is None and freq is not None:
+                phys = FREQ_TO_CHANNEL.get(freq)
 
             current_group = {
                 "physical": phys,
@@ -111,6 +124,22 @@ def run_scan(scan_id, device_id, tuner_index):
             }
 
         elif line.startswith("LOCK:") and current_group is not None:
+            # Example: "LOCK: 8vsb (ss=85 snq=88 seq=100)" or "LOCK: none (ss=0 snq=0 seq=0)"
+            m = re.search(r"LOCK:\s+(\S+)(?:\s+\(ss=(\d+)\s+snq=(\d+)\s+seq=(\d+)\))?", line)
+            if m:
+                lock_val, ss_val, snq_val, _ = m.groups()
+                current_group["lock"] = lock_val if lock_val.lower() != "none" else None
+                capturing = lock_val.lower() != "none"
+                if ss_val is not None:
+                    try:
+                        current_group["ss"] = int(ss_val)
+                    except ValueError:
+                        current_group["ss"] = 0
+                if snq_val is not None:
+                    try:
+                        current_group["snq"] = int(snq_val)
+                    except ValueError:
+                        current_group["snq"] = 0
             parts = line.split()
             lock_part = next((p for p in parts if p.startswith("lock=")), None)
             if lock_part:
@@ -136,10 +165,13 @@ def run_scan(scan_id, device_id, tuner_index):
                 num = m.group(1).strip()
                 name = m.group(2).strip()
                 current_group["subchannels"].append({"num": num, "name": name})
-                scans[scan_id]["results"] = list(results) + [current_group]
+            scans[scan_id]["results"] = list(results) + [current_group]
 
     proc.wait()
 
+    if current_group is not None and (
+        current_group.get("lock") is not None or current_group.get("subchannels")
+    ):
     if current_group is not None:
         results.append(current_group)
 
@@ -348,6 +380,7 @@ def scan_channels():
         # Include scan log in error message
         return jsonify({"status": "error", "message": f"Scan failed: {e.stdout.strip()}"}), 500
 
+    results: list[dict] = []
     results = []
     current_group = None
     capturing = False
@@ -356,11 +389,53 @@ def scan_channels():
         line = raw.strip()
 
         if line.startswith("SCANNING:"):
+            if current_group is not None and (
+                current_group.get("lock") is not None or current_group.get("subchannels")
+            ):
             if current_group is not None:
                 results.append(current_group)
             capturing = False
 
             parts = line.split()
+            freq = None
+            try:
+                freq = int(parts[1])
+            except (IndexError, ValueError):
+                pass
+
+            m = re.search(r"\((?:us-bcast:)?(\d+)\)", line)
+            phys = int(m.group(1)) if m else None
+            if phys is None and freq is not None:
+                phys = FREQ_TO_CHANNEL.get(freq)
+
+            current_group = {
+                "physical": phys,
+                "lock": None,
+                "ss": 0,
+                "snq": 0,
+                "subchannels": [],
+            }
+
+        elif line.startswith("LOCK:") and current_group is not None:
+            # Example: "LOCK: qam256 (ss=80 snq=90 seq=100)" or "LOCK: none (ss=0 snq=0 seq=0)"
+            m = re.search(r"LOCK:\s+(\S+)(?:\s+\(ss=(\d+)\s+snq=(\d+)\s+seq=(\d+)\))?", line)
+            if m:
+                lock_val, ss_val, snq_val, _ = m.groups()
+                current_group["lock"] = lock_val if lock_val.lower() != "none" else None
+                capturing = lock_val.lower() != "none"
+                if ss_val is not None:
+                    try:
+                        current_group["ss"] = int(ss_val)
+                    except ValueError:
+                        current_group["ss"] = 0
+                if snq_val is not None:
+                    try:
+                        current_group["snq"] = int(snq_val)
+                    except ValueError:
+                        current_group["snq"] = 0
+
+        elif line.startswith("PROGRAM") and capturing and current_group is not None:
+            after_colon = line.split(":", 1)[1].strip()
             # parts: ["SCANNING:", "<frequency>", "(<physical>)"]
             # e.g. "SCANNING: 605000000 (36)"
             freq_hz = parts[1]
@@ -391,6 +466,9 @@ def scan_channels():
                 name = m.group(2).strip()
                 current_group["subchannels"].append({"num": num, "name": name})
 
+    if current_group is not None and (
+        current_group.get("lock") is not None or current_group.get("subchannels")
+    ):
     if current_group is not None:
         results.append(current_group)
 
