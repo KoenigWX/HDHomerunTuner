@@ -459,14 +459,29 @@ def api_tune():
             f"hdhomerun_config {device_id} get /tuner{tuner}/streaminfo"
         )
         for line in streaminfo_raw.strip().splitlines():
-            num = name = None
-            for part in line.split():
-                if part.startswith("vchannel="):
-                    num = part.split("=", 1)[1]
-                elif part.startswith("name="):
-                    name = part.split("=", 1)[1]
-            if num and name:
-                subchannels.append({"num": num, "name": name})
+            parts = line.split()
+            if not parts or not parts[0].endswith(":"):
+                continue
+            # Example line: "3: 8.2 WAGMFOX bps=1234567 peakbps=2345678"
+            try:
+                prog_id = int(parts[0].rstrip(":"))
+            except ValueError:
+                continue
+
+            if len(parts) < 2 or "." not in parts[1]:
+                continue
+            vchannel = parts[1]
+
+            name_tokens = []
+            idx = 2
+            while idx < len(parts) and "=" not in parts[idx]:
+                name_tokens.append(parts[idx])
+                idx += 1
+            name = " ".join(name_tokens)
+
+            if vchannel and name:
+                subchannels.append({"id": prog_id, "num": vchannel, "name": name})
+
         if subchannels:
             break
         time.sleep(0.5)
@@ -476,18 +491,21 @@ def api_tune():
 
 @app.route("/api/program_info", methods=["POST"])
 def api_program_info():
-    """
-    Return TS bitrate info for a specific subchannel on a tuned tuner.
-    Expects JSON { "tuner": <index>, "program": "<major>.<minor>" }.
-    Returns { "bitrate": <bps>, "max_bitrate": <bps> }.
-    """
+    """Return TS bitrate info for a specific program on a tuned tuner."""
+
     data = request.json or {}
     tuner = data.get("tuner")
-    program = data.get("program")
+    program = data.get("program")  # program id as integer
 
     device_id, _ = discover_device()
-    if not device_id or tuner is None or not program:
+    if not device_id or tuner is None or program is None:
         return jsonify({"bitrate": None, "max_bitrate": None}), 400
+
+    # Select the program on the tuner
+    subprocess.getoutput(
+        f"hdhomerun_config {device_id} set /tuner{tuner}/program {program}"
+    )
+    time.sleep(0.2)
 
     streaminfo_raw = subprocess.getoutput(
         f"hdhomerun_config {device_id} get /tuner{tuner}/streaminfo"
@@ -497,11 +515,16 @@ def api_program_info():
 
     for line in streaminfo_raw.strip().splitlines():
         parts = line.split()
-        vchannel = bps = peakbps = None
+        if not parts or not parts[0].endswith(":"):
+            continue
+        try:
+            prog_id = int(parts[0].rstrip(":"))
+        except ValueError:
+            continue
+
+        bps = peakbps = None
         for part in parts:
-            if part.startswith("vchannel="):
-                vchannel = part.split("=", 1)[1]
-            elif part.startswith("bps="):
+            if part.startswith("bps="):
                 try:
                     bps = int(part.split("=", 1)[1])
                 except ValueError:
@@ -511,7 +534,7 @@ def api_program_info():
                     peakbps = int(part.split("=", 1)[1])
                 except ValueError:
                     peakbps = None
-        if vchannel == program:
+        if prog_id == int(program):
             bitrate = bps
             max_bitrate = peakbps
             break

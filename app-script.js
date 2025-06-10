@@ -598,7 +598,7 @@
       })
         .then((r) => r.json())
         .then((data) => {
-          // data.subchannels = [ { num: "8.1", name: "WAGM-HD" }, … ]
+          // data.subchannels = [ { id, num, name }, … ]
           if (Array.isArray(data.subchannels) && data.subchannels.length > 0) {
             programSelect.hidden = false;
             programSelect.disabled = false;
@@ -606,7 +606,8 @@
               '<option value="" disabled selected>Select Program…</option>';
             data.subchannels.forEach((p) => {
               const opt = document.createElement("option");
-              opt.value = p.num;
+              opt.value = p.id;
+              opt.dataset.vchannel = p.num;
               opt.innerText = `${p.num} | ${p.name}`;
               programSelect.appendChild(opt);
             });
@@ -629,16 +630,18 @@
     // 7) When a program is chosen, fetch its TS info
     // ───────────────────────────────────────────────────────────
     programSelect.addEventListener("change", () => {
-      const prog = programSelect.value;
-      if (!prog) {
+      const progId = programSelect.value;
+      const selectedOpt = programSelect.options[programSelect.selectedIndex];
+      const vchan = selectedOpt ? selectedOpt.dataset.vchannel : "";
+      if (!progId) {
         tsInfo.hidden = true;
         return;
       }
-      tunedProgram = prog;
+      tunedProgram = vchan;
       fetch("api/program_info", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tuner: selectedTuner, program: prog }),
+        body: JSON.stringify({ tuner: selectedTuner, program: progId }),
       })
         .then((r) => r.json())
         .then((info) => {
