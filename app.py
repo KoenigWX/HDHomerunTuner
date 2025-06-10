@@ -449,21 +449,23 @@ def api_tune():
     subprocess.getoutput(f"hdhomerun_config {device_id} set /tuner{tuner}/channel 8vsb:{channel}")
     time.sleep(1)  # allow PSIP to populate
 
-    # 3) Fetch streaminfo for subchannels
-    streaminfo_raw = subprocess.getoutput(
-        f"hdhomerun_config {device_id} get /tuner{tuner}/streaminfo"
-    )
+    # 3) Fetch streaminfo for subchannels. PSIP data may take a moment to
+    # populate, so retry a few times before returning.
     subchannels = []
-    for line in streaminfo_raw.strip().splitlines():
-        parts = line.split()
-        num = name = None
-        for part in parts:
-            if part.startswith("vchannel="):
-                num = part.split("=", 1)[1]
-            elif part.startswith("name="):
-                name = part.split("=", 1)[1]
-        if num and name:
-            subchannels.append({"num": num, "name": name})
+    for _ in range(6):  # up to ~3s total
+        streaminfo_raw = subprocess.getoutput(
+            f"hdhomerun_config {device_id} get /tuner{tuner}/streaminfo"
+        )
+        for line in streaminfo_raw.strip().splitlines():
+            m_ch = re.search(r"vchannel=([0-9.]+)", line)
+            m_name = re.search(r"name=([^\s]+(?:\s[^\s]+)*)", line)
+            if m_ch and m_name:
+                subchannels.append(
+                    {"num": m_ch.group(1), "name": m_name.group(1).strip()}
+                )
+        if subchannels:
+            break
+        time.sleep(0.5)
 
     return jsonify({"subchannels": subchannels})
 
