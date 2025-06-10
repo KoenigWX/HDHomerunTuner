@@ -9,6 +9,7 @@ A web-based manual tuner interface for SiliconDust HDHomeRun devices. The applic
 - Tune a selected tuner to a physical channel and list available subchannels
 - Retrieve bitrate information for a program
 - Clear tuner locks directly from the interface
+- View real-time signal quality using [Apache ECharts](https://echarts.apache.org)
 
 ## Local Development
 
@@ -36,6 +37,9 @@ A web-based manual tuner interface for SiliconDust HDHomeRun devices. The applic
    ```
 
    The web UI will be available at <http://localhost:5070>.
+
+Apache ECharts is loaded via CDN in `index.html`, so no additional
+JavaScript build step is required.
 
 ## Docker Usage
 

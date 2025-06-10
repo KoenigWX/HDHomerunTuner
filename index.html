@@ -265,7 +265,7 @@
 
               <!-- CHART CONTAINER -->
               <div id="chart-container" class="p-3 mb-4 bg-body-secondary rounded-3">
-                <canvas id="signal-chart" style="height: 300px; width: 100%;"></canvas>
+                <div id="signal-chart" style="height: 300px; width: 100%;"></div>
               </div>
               <!-- END CHART -->
             </div>
@@ -285,10 +285,8 @@
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.min.js"
       crossorigin="anonymous"
     ></script>
-    <!-- Chart.js itself -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3/dist/chart.min.js"></script>
-    <!-- date‐fns adapter for Chart.js time axis -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- Apache ECharts for realtime charts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <script>
   // Utility to set an element’s text + badge color class
   function setBadge(id, text, colorClass) {
@@ -401,86 +399,61 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     let selectedTuner = null;
+    let chartPolling = true; // controls whether realtime points are added
 
     // ───────────────────────────────────────────────────────────
-    // Chart.js (time‐series, not streaming plugin)
+    // Apache ECharts setup for realtime updates
     // ───────────────────────────────────────────────────────────
-    const ctx = document.getElementById("signal-chart").getContext("2d");
-    const signalChart = new Chart(ctx, {
-      type: "line",
-      data: {
-        datasets: [
-          {
-            label: "SS",
-            data: [], // each point: { x: <timestamp>, y: <value> }
-            borderColor: "red",
-            fill: false,
-            tension: 0.3,
-          },
-          {
-            label: "SNQ",
-            data: [],
-            borderColor: "green",
-            fill: false,
-            tension: 0.3,
-          },
-          {
-            label: "SEQ",
-            data: [],
-            borderColor: "blue",
-            fill: false,
-            tension: 0.3,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        animation: false,
-        scales: {
-          x: {
-            type: "time", // requires chartjs-adapter-date-fns
-            time: {
-              unit: "second",
-              tooltipFormat: "HH:mm:ss",
-            },
-            title: {
-              display: true,
-              text: "Time",
-            },
-          },
-          y: {
-            min: 0,
-            max: 100,
-            title: {
-              display: true,
-              text: "Percentage (%)",
-            },
-          },
-        },
-        plugins: {
-          legend: {
-            position: "bottom",
-          },
-        },
-      },
+    const chartEl = document.getElementById("signal-chart");
+    const signalChart = echarts.init(chartEl);
+
+    const chartSeries = [
+      { name: "SS", type: "line", data: [] },
+      { name: "SNQ", type: "line", data: [] },
+      { name: "SEQ", type: "line", data: [] },
+    ];
+
+    signalChart.setOption({
+      animation: false,
+      legend: { bottom: 0 },
+      xAxis: { type: "time" },
+      yAxis: { type: "value", min: 0, max: 100 },
+      series: chartSeries,
     });
 
-    // Every second, fetch the current tuner’s SS/SNQ/SEQ and append to the datasets
-    setInterval(() => {
-      if (selectedTuner === null) return;
+    function pushPoint(arr, pt) {
+      arr.push(pt);
+      const limit = 60;
+      if (arr.length > limit) arr.splice(0, arr.length - limit);
+    }
+
+    function appendChartPoint() {
+      if (!chartPolling || selectedTuner === null) return;
       fetch("/api/tuners")
         .then((r) => r.json())
         .then((tuners) => {
           const t = tuners.find((x) => x.index === selectedTuner);
           if (!t || !t.locked) return;
           const now = Date.now();
-          signalChart.data.datasets[0].data.push({ x: now, y: t.ss });
-          signalChart.data.datasets[1].data.push({ x: now, y: t.snq });
-          signalChart.data.datasets[2].data.push({ x: now, y: t.seq });
-          signalChart.update("none");
+          pushPoint(chartSeries[0].data, [now, t.ss]);
+          pushPoint(chartSeries[1].data, [now, t.snq]);
+          pushPoint(chartSeries[2].data, [now, t.seq]);
+          signalChart.setOption({ series: chartSeries });
         })
         .catch(() => {});
-    }, 1000);
+    }
+
+    setInterval(appendChartPoint, 1000);
+
+    const pollButton = document.getElementById("poll-button");
+    pollButton.addEventListener("click", () => {
+      chartPolling = !chartPolling;
+      pollButton.classList.toggle("btn-outline-danger", chartPolling);
+      pollButton.classList.toggle("btn-outline-success", !chartPolling);
+      pollButton.innerHTML = chartPolling
+        ? '<i class="bi bi-sign-stop-fill"></i> Polling'
+        : '<i class="bi bi-play-fill"></i> Paused';
+    });
 
     // ───────────────────────────────────────────────────────────
     // 1) Populate Status badge once
@@ -640,10 +613,10 @@
           });
 
         // **Reset the chart entirely** whenever you switch tuners:
-        signalChart.data.datasets.forEach((ds) => {
-          ds.data.length = 0;
+        chartSeries.forEach((s) => {
+          s.data.length = 0;
         });
-        signalChart.update("none");
+        signalChart.setOption({ series: chartSeries });
       });
     });
 
@@ -828,10 +801,10 @@
       if (selectedTuner === null) return;
 
       // Reset the chart data right when you hit “Tune”
-      signalChart.data.datasets.forEach((ds) => {
-        ds.data.length = 0;
+      chartSeries.forEach((s) => {
+        s.data.length = 0;
       });
-      signalChart.update("none");
+      signalChart.setOption({ series: chartSeries });
 
       const chVal = parseInt(channelInput.value, 10);
       programSelect.hidden = true;
