@@ -2,6 +2,11 @@
 
 A web-based manual tuner interface for SiliconDust HDHomeRun devices. The application is implemented in [Flask](https://flask.palletsprojects.com/) and includes a lightweight Bootstrap front end. It exposes several API endpoints for controlling tuners and viewing device status.
 
+## Project Support
+
+This project was created using OpenAI's Codex agent in a GitHub Codespace.
+Ongoing maintenance and improvements are handled primarily through ChatGPT.
+
 ## Features
 
 - Automatically discovers your HDHomeRun device on the network
