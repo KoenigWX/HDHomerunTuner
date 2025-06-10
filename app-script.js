@@ -133,7 +133,9 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     let selectedTuner = null;
-    let chartPolling = true; // controls whether realtime points are added
+    let pollingEnabled = true; // controls whether realtime points are added
+    let tunedChannel = null;
+    let tunedProgram = null;
 
     // ───────────────────────────────────────────────────────────
     // Apache ECharts setup for realtime updates
@@ -150,19 +152,25 @@
     signalChart.setOption({
       animation: false,
       legend: { bottom: 0 },
+      title: { text: "" },
       xAxis: { type: "time" },
       yAxis: { type: "value", min: 0, max: 100 },
       series: chartSeries,
     });
 
+    function updateChartTitle() {
+      const parts = [];
+      if (tunedChannel !== null) parts.push(`CH ${tunedChannel}`);
+      if (tunedProgram) parts.push(`Prog ${tunedProgram}`);
+      signalChart.setOption({ title: { text: parts.join(" - ") } });
+    }
+
     function pushPoint(arr, pt) {
       arr.push(pt);
-      const limit = 60;
-      if (arr.length > limit) arr.splice(0, arr.length - limit);
     }
 
     function appendChartPoint() {
-      if (!chartPolling || selectedTuner === null) return;
+      if (!pollingEnabled || selectedTuner === null) return;
       fetch("api/tuners")
         .then((r) => r.json())
         .then((tuners) => {
@@ -181,10 +189,10 @@
 
     const pollButton = document.getElementById("poll-button");
     pollButton.addEventListener("click", () => {
-      chartPolling = !chartPolling;
-      pollButton.classList.toggle("btn-outline-danger", chartPolling);
-      pollButton.classList.toggle("btn-outline-success", !chartPolling);
-      pollButton.innerHTML = chartPolling
+      pollingEnabled = !pollingEnabled;
+      pollButton.classList.toggle("btn-outline-danger", pollingEnabled);
+      pollButton.classList.toggle("btn-outline-success", !pollingEnabled);
+      pollButton.innerHTML = pollingEnabled
         ? '<i class="bi bi-sign-stop-fill"></i> Polling'
         : '<i class="bi bi-play-fill"></i> Paused';
     });
@@ -215,6 +223,7 @@
     // ───────────────────────────────────────────────────────────
 
     function fetchAndUpdateTuners() {
+      if (!pollingEnabled) return;
       fetch("api/tuners")
         .then((r) => r.json())
         .then((tuners) => {
@@ -543,6 +552,9 @@
       signalChart.setOption({ series: chartSeries });
 
       const chVal = parseInt(channelInput.value, 10);
+      tunedChannel = chVal;
+      tunedProgram = null;
+      updateChartTitle();
       programSelect.hidden = true;
       programSelect.innerHTML = '<option value="" disabled selected>Select Program…</option>';
       programSelect.disabled = true;
@@ -566,6 +578,7 @@
             opt.innerText = `${p.num} | ${p.name}`;
             programSelect.appendChild(opt);
           });
+          updateChartTitle();
         })
         .catch((err) => {
           console.error(err);
@@ -584,6 +597,7 @@
         tsInfo.hidden = true;
         return;
       }
+      tunedProgram = prog;
       fetch("api/program_info", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -594,6 +608,7 @@
           // info = { bitrate: <bps>, max_bitrate: <bps> }
           tsInfo.hidden = false;
           updateTSBar("ts-progress-bar", "ts-percentage-text", info.bitrate, info.max_bitrate);
+          updateChartTitle();
         })
         .catch((err) => {
           console.error(err);

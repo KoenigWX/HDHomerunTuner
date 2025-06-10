@@ -529,7 +529,13 @@ def api_clear_locks():
 
     results = []
     for idx in range(4):
-        raw = subprocess.getoutput(f"hdhomerun_config {device_id} set /tuner{idx}/lockkey none")
+        # Stop any active stream on the tuner before releasing the lock
+        subprocess.getoutput(
+            f"hdhomerun_config {device_id} set /tuner{idx}/channel none"
+        )
+        raw = subprocess.getoutput(
+            f"hdhomerun_config {device_id} set /tuner{idx}/lockkey none"
+        )
         results.append({"tuner": idx, "raw": raw})
     return jsonify({"results": results})
 
