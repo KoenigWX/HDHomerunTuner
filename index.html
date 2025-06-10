@@ -401,6 +401,9 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     let selectedTuner = null;
+    let polling = true;
+    let tunerInterval;
+    let chartInterval;
 
     // ───────────────────────────────────────────────────────────
     // Chart.js (time‐series, not streaming plugin)
@@ -466,7 +469,7 @@
     });
 
     // Every second, fetch the current tuner’s SS/SNQ/SEQ and append to the datasets
-    setInterval(() => {
+    function updateSignalChart() {
       if (selectedTuner === null) return;
       fetch("/api/tuners")
         .then((r) => r.json())
@@ -480,7 +483,9 @@
           signalChart.update("none");
         })
         .catch(() => {});
-    }, 1000);
+    }
+
+    chartInterval = setInterval(updateSignalChart, 1000);
 
     // ───────────────────────────────────────────────────────────
     // 1) Populate Status badge once
@@ -590,7 +595,27 @@
     }
 
     fetchAndUpdateTuners();
-    setInterval(fetchAndUpdateTuners, 1000);
+    tunerInterval = setInterval(fetchAndUpdateTuners, 1000);
+
+    const pollButton = document.getElementById("poll-button");
+    pollButton.addEventListener("click", () => {
+      if (polling) {
+        clearInterval(tunerInterval);
+        clearInterval(chartInterval);
+        polling = false;
+        pollButton.classList.remove("btn-outline-danger");
+        pollButton.classList.add("btn-outline-success");
+        pollButton.innerHTML = '<i class="bi bi-play-fill"></i> Resume';
+      } else {
+        fetchAndUpdateTuners();
+        tunerInterval = setInterval(fetchAndUpdateTuners, 1000);
+        chartInterval = setInterval(updateSignalChart, 1000);
+        polling = true;
+        pollButton.classList.remove("btn-outline-success");
+        pollButton.classList.add("btn-outline-danger");
+        pollButton.innerHTML = '<i class="bi bi-sign-stop-fill"></i> Polling';
+      }
+    });
 
     // ───────────────────────────────────────────────────────────
     // 3) Tuner selection click handler
