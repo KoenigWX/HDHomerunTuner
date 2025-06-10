@@ -169,7 +169,7 @@
                   min="2"
                   max="51"
                 />
-                <select class="form-select" id="program-select" aria-label="Select Program" disabled>
+                <select class="form-select" id="program-select" aria-label="Select Program">
                   <option value="" disabled selected>Select Program…</option>
                 </select>
                 <button id="tune-button" class="btn btn-success disabled" type="button">Tune</button>
@@ -607,6 +607,7 @@
         // Hide TS info & program dropdown until tune
         document.getElementById("ts-info").hidden = true;
         const programSelect = document.getElementById("program-select");
+        programSelect.disabled = true;
         programSelect.hidden = true;
         programSelect.innerHTML = '<option value="" disabled selected>Select Program…</option>';
         document.getElementById("tune-button").classList.add("disabled");
@@ -802,6 +803,7 @@
 
     // Initially hide the program dropdown
     programSelect.hidden = true;
+    programSelect.disabled = true;
 
     function validateTuneForm() {
       const chVal = parseInt(channelInput.value, 10);
@@ -814,6 +816,7 @@
       } else {
         tuneButton.classList.add("disabled");
         programSelect.hidden = true;
+        programSelect.disabled = true;
         programSelect.innerHTML =
           '<option value="" disabled selected>Select Program…</option>';
         tsInfo.hidden = true;
@@ -836,6 +839,7 @@
       const chVal = parseInt(channelInput.value, 10);
       programSelect.hidden = true;
       programSelect.innerHTML = '<option value="" disabled selected>Select Program…</option>';
+      programSelect.disabled = true;
       tsInfo.hidden = true;
 
       fetch("/api/tune", {
@@ -847,6 +851,7 @@
         .then((data) => {
           // data.subchannels = [ { num: "8.1", name: "WAGM-HD" }, … ]
           programSelect.hidden = false;
+            programSelect.disabled = false;
           programSelect.innerHTML =
             '<option value="" disabled selected>Select Program…</option>';
           data.subchannels.forEach((p) => {
@@ -858,6 +863,7 @@
         })
         .catch((err) => {
           console.error(err);
+          programSelect.disabled = true;
           programSelect.hidden = true;
           tsInfo.hidden = true;
         });
