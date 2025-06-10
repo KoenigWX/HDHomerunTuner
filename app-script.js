@@ -93,6 +93,7 @@
   }
 
   // Toggle the "Scan Again" button into a spinner state
+  let scanningActive = false; // shared flag updated by setScanning()
   function setScanning(isScanning) {
     const btn = document.getElementById("scan-again-btn");
     if (!btn) return;
@@ -138,7 +139,6 @@
   document.addEventListener("DOMContentLoaded", () => {
     let selectedTuner = null;
     let pollingEnabled = true; // controls whether realtime points are added
-    let scanningActive = false; // true while channel scan is running
     let tunedChannel = null;
     let tunedProgram = null;
     let tunedProgramId = null;
@@ -493,10 +493,17 @@
       const tbody = document.getElementById("scan-table-body");
       tbody.innerHTML = "";
 
-      rows.forEach((ch) => {
+      rows.forEach((ch, idx) => {
         // ─── First Row: physical channel, SS cell, SNQ cell ───
         const row1 = document.createElement("tr");
         row1.classList.add("table-active");
+        row1.style.cursor = "pointer";
+
+        const collapseId = `collapse-${idx}`;
+        row1.setAttribute("data-bs-toggle", "collapse");
+        row1.setAttribute("data-bs-target", `#${collapseId}`);
+        row1.setAttribute("aria-expanded", "false");
+        row1.setAttribute("aria-controls", collapseId);
 
         // Column 1: physical channel #
         const th = document.createElement("th");
@@ -530,6 +537,8 @@
         // ─── Second Row: nested table of subchannels (if any) ───
         if (Array.isArray(ch.subchannels) && ch.subchannels.length > 0) {
           const row2 = document.createElement("tr");
+          row2.classList.add("collapse");
+          row2.id = collapseId;
           const tdNested = document.createElement("td");
           tdNested.colSpan = 4;
 
