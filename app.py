@@ -17,6 +17,11 @@ app = Flask(__name__, static_folder=".", static_url_path="")
 # Store scan progress keyed by UUID
 scans = {}
 
+# Cache for discovered device information to avoid expensive calls on every
+# request. Values expire after DEVICE_CACHE_TTL seconds.
+DEVICE_CACHE_TTL = 60  # seconds
+_device_cache = {"id": None, "ip": None, "timestamp": 0.0}
+
 # Mapping from frequency (Hz) to physical channel
 FREQ_TO_CHANNEL = {
     57000000: 2,
@@ -158,25 +163,37 @@ def run_scan(scan_id, device_id, tuner_index):
     scans[scan_id]["finished"] = True
 
 
-def discover_device():
+def discover_device() -> tuple[str | None, str | None]:
+    """Return the HDHomeRun device id and IP address.
+
+    Results are cached for ``DEVICE_CACHE_TTL`` seconds to avoid running the
+    external ``hdhomerun_config discover`` command on every request.
     """
-    Run `hdhomerun_config discover` and return (device_id, device_ip).
-    If no device is found, return (None, None).
-    """
+    now = time.time()
+    if (
+        _device_cache["id"]
+        and now - _device_cache["timestamp"] < DEVICE_CACHE_TTL
+    ):
+        return _device_cache["id"], _device_cache["ip"]
+
     try:
         out = subprocess.check_output(
             ["hdhomerun_config", "discover"], stderr=subprocess.DEVNULL
         ).decode()
     except subprocess.CalledProcessError:
+        _device_cache.update({"id": None, "ip": None, "timestamp": now})
         return None, None
 
-    # Look for lines like "hdhomerun device 10B137F8 found at 10.0.20.10"
+    device_id = device_ip = None
     for line in out.splitlines():
         match = re.search(r"hdhomerun device (\w+) found at ([\d\.]+)", line)
         if match:
-            return match.group(1), match.group(2)
+            device_id = match.group(1)
+            device_ip = match.group(2)
+            break
 
-    return None, None
+    _device_cache.update({"id": device_id, "ip": device_ip, "timestamp": now})
+    return device_id, device_ip
 
 
 @app.route("/")

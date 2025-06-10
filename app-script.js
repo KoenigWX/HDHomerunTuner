@@ -68,8 +68,14 @@
     if (bitrate === null || maxBitrate === null) {
       bar.style.width = "0%";
       txt.innerText = "--/-- mbps";
-      bar.classList.remove("bg-success", "bg-warning", "bg-danger");
-      bar.classList.add("bg-secondary");
+      bar.classList.remove(
+        "bg-primary",
+        "bg-success",
+        "bg-warning",
+        "bg-danger",
+        "bg-secondary"
+      );
+      bar.classList.add("bg-primary");
     } else {
       // Convert to mbps
       const mbps = bitrate / 1_000_000;
@@ -77,9 +83,14 @@
       const pct = Math.floor((mbps / mbpsMax) * 100);
       bar.style.width = pct + "%";
       txt.innerText = `${mbps.toFixed(2)}/${mbpsMax.toFixed(2)} mbps`;
-      bar.classList.remove("bg-secondary");
-      // Always green for TS bar
-      bar.classList.add("bg-success");
+      bar.classList.remove(
+        "bg-primary",
+        "bg-success",
+        "bg-warning",
+        "bg-danger",
+        "bg-secondary"
+      );
+      bar.classList.add("bg-primary");
     }
   }
 
