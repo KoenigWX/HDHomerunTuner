@@ -494,9 +494,9 @@ def api_program_info():
     """Return TS bitrate info for a specific program on a tuned tuner.
 
     The HDHomeRun does not always report reliable bitrate data via the
-    ``streaminfo`` command. To improve accuracy we retrieve the current
-    bitrate from ``/tunerX/debug`` and fall back to ``streaminfo`` only for
-    the peak bitrate value.
+    ``streaminfo`` command. To improve accuracy we parse ``/tunerX/debug``:
+    ``ts:bps`` gives the current bitrate while ``dev:bps`` represents the
+    maximum possible bitrate. ``streaminfo`` is used only as a fallback.
     """
 
     data = request.json or {}
@@ -527,17 +527,27 @@ def api_program_info():
         f"hdhomerun_config {device_id} get /tuner{tuner}/streaminfo"
     )
 
-    def parse_debug_bps(raw: str) -> int | None:
-        """Extract current TS bitrate from /tuner/debug output."""
+    def parse_debug_bps(raw: str) -> tuple[int | None, int | None]:
+        """Return (ts_bps, dev_bps) from ``/tuner/debug`` output."""
 
+        ts_bps = dev_bps = None
         for line in raw.strip().splitlines():
-            m = re.search(r"bps=(\d+)", line)
-            if m:
-                try:
-                    return int(m.group(1))
-                except ValueError:
-                    return None
-        return None
+            line = line.strip()
+            if line.startswith("ts:"):
+                m = re.search(r"bps=(\d+)", line)
+                if m:
+                    try:
+                        ts_bps = int(m.group(1))
+                    except ValueError:
+                        ts_bps = None
+            elif line.startswith("dev:"):
+                m = re.search(r"bps=(\d+)", line)
+                if m:
+                    try:
+                        dev_bps = int(m.group(1))
+                    except ValueError:
+                        dev_bps = None
+        return ts_bps, dev_bps
 
     def parse_streaminfo_bps(raw: str, pid: int) -> tuple[int | None, int | None]:
         """Return (bps, peakbps) for a program from streaminfo output."""
@@ -569,13 +579,14 @@ def api_program_info():
             break
         return bps, peak
 
-    debug_bitrate = parse_debug_bps(debug_raw)
+    debug_ts_bitrate, debug_dev_bitrate = parse_debug_bps(debug_raw)
     stream_bitrate, stream_peak = parse_streaminfo_bps(streaminfo_raw, program_id)
 
-    # Prefer the bitrate from /tuner/debug if available; otherwise fall back
-    # to the value reported in streaminfo.
-    bitrate = debug_bitrate if debug_bitrate is not None else stream_bitrate
-    max_bitrate = stream_peak
+    # Prefer values from /tuner/debug when available.
+    bitrate = debug_ts_bitrate if debug_ts_bitrate is not None else stream_bitrate
+    max_bitrate = (
+        debug_dev_bitrate if debug_dev_bitrate is not None else stream_peak
+    )
 
     if bitrate is None:
         bitrate = 0
