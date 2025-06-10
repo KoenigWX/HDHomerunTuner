@@ -530,22 +530,19 @@ def api_program_info():
     def parse_debug_bps(raw: str) -> int | None:
         """Extract current TS bitrate from /tuner/debug output."""
 
-        lines = raw.strip().splitlines()
-        for prefix in ("ts:", "net:", "dev:"):
-            for line in lines:
-                line = line.strip()
-                if line.startswith(prefix):
-                    for part in line.split():
-                        if part.startswith("bps="):
-                            try:
-                                return int(part.split("=", 1)[1])
-                            except ValueError:
-                                return None
+        for line in raw.strip().splitlines():
+            m = re.search(r"bps=(\d+)", line)
+            if m:
+                try:
+                    return int(m.group(1))
+                except ValueError:
+                    return None
         return None
 
-    def parse_peak_bps(raw: str, pid: int) -> int | None:
-        """Extract peak bitrate for a program from streaminfo."""
+    def parse_streaminfo_bps(raw: str, pid: int) -> tuple[int | None, int | None]:
+        """Return (bps, peakbps) for a program from streaminfo output."""
 
+        bps = peak = None
         for line in raw.strip().splitlines():
             parts = line.split()
             if not parts or not parts[0].endswith(":"):
@@ -558,17 +555,32 @@ def api_program_info():
             if prog_id != pid:
                 continue
 
-            for part in parts:
-                if part.startswith("peakbps="):
+            for part in parts[1:]:
+                if part.startswith("bps="):
                     try:
-                        return int(part.split("=", 1)[1])
+                        bps = int(part.split("=", 1)[1])
                     except ValueError:
-                        return None
+                        bps = None
+                elif part.startswith("peakbps="):
+                    try:
+                        peak = int(part.split("=", 1)[1])
+                    except ValueError:
+                        peak = None
             break
-        return None
+        return bps, peak
 
-    bitrate = parse_debug_bps(debug_raw)
-    max_bitrate = parse_peak_bps(streaminfo_raw, program_id)
+    debug_bitrate = parse_debug_bps(debug_raw)
+    stream_bitrate, stream_peak = parse_streaminfo_bps(streaminfo_raw, program_id)
+
+    # Prefer the bitrate from /tuner/debug if available; otherwise fall back
+    # to the value reported in streaminfo.
+    bitrate = debug_bitrate if debug_bitrate is not None else stream_bitrate
+    max_bitrate = stream_peak
+
+    if bitrate is None:
+        bitrate = 0
+    if max_bitrate is None:
+        max_bitrate = 0
 
     return jsonify({"bitrate": bitrate, "max_bitrate": max_bitrate})
 
