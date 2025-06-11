@@ -536,40 +536,29 @@ function renderScanRows(rows) {
 
         tbody.appendChild(row1);
 
-        // ─── Second Row: nested table of subchannels (if any) ───
+        // ─── Second Row: subchannel list (if any) ───
         if (Array.isArray(ch.subchannels) && ch.subchannels.length > 0) {
           const row2 = document.createElement("tr");
           row2.classList.add("collapse");
           row2.id = collapseId;
+
           const tdNested = document.createElement("td");
           tdNested.colSpan = 4;
 
-          const innerTable = document.createElement("table");
-          innerTable.className = "table table-sm mb-0 table-borderless";
-          const innerBody = document.createElement("tbody");
+          const list = document.createElement("ul");
+          list.className = "list-unstyled subchannel-list mb-0 ps-4";
 
           ch.subchannels.forEach((sub) => {
-            const subRow = document.createElement("tr");
-
-            const subTh = document.createElement("th");
-            subTh.scope = "row";
-            subTh.style.width = "12.5%";
-            subTh.innerText = sub.num; // e.g. “8.1”
-            subRow.appendChild(subTh);
-
-            const subTd = document.createElement("td");
-            subTd.innerText = sub.name; // e.g. “WAGM-HD”
-            subRow.appendChild(subTd);
-
-            innerBody.appendChild(subRow);
+            const li = document.createElement("li");
+            li.innerHTML = `<strong>${sub.num}</strong> ${sub.name}`;
+            list.appendChild(li);
           });
 
-          innerTable.appendChild(innerBody);
-          tdNested.appendChild(innerTable);
+          tdNested.appendChild(list);
           row2.appendChild(tdNested);
-      tbody.appendChild(row2);
-    }
-  });
+          tbody.appendChild(row2);
+        }
+      });
 }
 
   // Collapse any expanded subchannel rows in the scan table
