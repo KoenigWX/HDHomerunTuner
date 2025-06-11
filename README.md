@@ -20,6 +20,7 @@ Ongoing maintenance and improvements are handled primarily through ChatGPT.
 - Channel scan results collapse/expand under each physical channel, with
   subchannels shown in an indented list
 - Real-time charts automatically pause while a channel scan is running
+- Export the latest channel scan results as labeled JSON for ChatGPT
 
 ## API Endpoints
 
