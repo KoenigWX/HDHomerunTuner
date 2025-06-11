@@ -17,7 +17,8 @@ Ongoing maintenance and improvements are handled primarily through ChatGPT.
 - Retrieve bitrate information for a program
 - Clear tuner locks directly from the interface
 - View real-time signal quality using [Apache ECharts](https://echarts.apache.org)
-- Channel scan results collapse/expand under each physical channel
+- Channel scan results collapse/expand under each physical channel, with
+  subchannels shown in an indented list
 - Real-time charts automatically pause while a channel scan is running
 
 ## API Endpoints
