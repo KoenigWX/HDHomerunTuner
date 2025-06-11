@@ -142,6 +142,7 @@
     let tunedChannel = null;
     let tunedProgram = null;
     let tunedProgramId = null;
+    let lastScanResults = [];
 
     // Track interval IDs so we can fully stop polling when requested
     let chartInterval = null;
@@ -491,6 +492,7 @@
     // Helper: renderScanRows(arrayOf { physical, ss, snq, subchannels:[…] })
     // ───────────────────────────────────────────────────────────────────
 function renderScanRows(rows) {
+      lastScanResults = Array.isArray(rows) ? rows.slice() : [];
       const tbody = document.getElementById("scan-table-body");
       tbody.innerHTML = "";
 
@@ -570,6 +572,32 @@ function renderScanRows(rows) {
         inst.hide();
       });
   }
+
+  // Export the last scan results as labeled JSON and copy to clipboard
+  document.getElementById("export-scan-btn").addEventListener("click", () => {
+    if (!lastScanResults.length) {
+      showToast("No scan results to export", true);
+      return;
+    }
+    const exportData = lastScanResults.map((ch) => ({
+      physical_channel: ch.physical,
+      signal_strength_percent: ch.ss,
+      signal_noise_quality_percent: ch.snq,
+      subchannels: Array.isArray(ch.subchannels)
+        ? ch.subchannels.map((s) => ({ number: s.num, name: s.name }))
+        : [],
+    }));
+    const text = JSON.stringify(exportData, null, 2);
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        showToast("Scan results copied to clipboard");
+      })
+      .catch((err) => {
+        console.error("Clipboard error", err);
+        showToast("Failed to copy results", true);
+      });
+  });
 
     // ───────────────────────────────────────────────────────────
     // 5) Force‐clear all tuner locks via POST /api/clear_locks

@@ -124,14 +124,24 @@
           <div class="card mb-4">
             <div class="card-header bg-warning-subtle d-flex w-100 justify-content-between align-items-center">
               <b>Channel Scan</b>
-              <button
-                id="scan-again-btn"
-                type="button"
-                class="btn btn-warning"
-                style="--bs-btn-padding-y: 0.15rem; --bs-btn-padding-x: 0.5rem; --bs-btn-font-size: 0.75rem;"
-              >
-                <i class="bi bi-tv-fill"></i> New Channel Scan
-              </button>
+              <div class="btn-group" role="group">
+                <button
+                  id="scan-again-btn"
+                  type="button"
+                  class="btn btn-warning"
+                  style="--bs-btn-padding-y: 0.15rem; --bs-btn-padding-x: 0.5rem; --bs-btn-font-size: 0.75rem;"
+                >
+                  <i class="bi bi-tv-fill"></i> New Channel Scan
+                </button>
+                <button
+                  id="export-scan-btn"
+                  type="button"
+                  class="btn btn-secondary"
+                  style="--bs-btn-padding-y: 0.15rem; --bs-btn-padding-x: 0.5rem; --bs-btn-font-size: 0.75rem;"
+                >
+                  <i class="bi bi-clipboard"></i> Export Results
+                </button>
+              </div>
             </div>
             <div class="card-body">
               <table class="table table-striped caption-top table-sm" id="scan-table">
