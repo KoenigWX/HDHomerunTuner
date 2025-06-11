@@ -497,7 +497,6 @@ function renderScanRows(rows) {
       rows.forEach((ch, idx) => {
         // ─── First Row: physical channel, SS cell, SNQ cell ───
         const row1 = document.createElement("tr");
-        row1.classList.add("table-active");
         row1.style.cursor = "pointer";
 
         const collapseId = `collapse-${idx}`;
@@ -521,7 +520,8 @@ function renderScanRows(rows) {
         const tdSS = document.createElement("td");
         tdSS.classList.add("text-center");
         const ssVal = ch.ss ?? 0;
-        tdSS.classList.add(ssVal < 50 ? "table-danger" : "table-success");
+        const ssClass = ssColorClass(ssVal).replace("bg-", "table-");
+        tdSS.classList.add(ssClass);
         tdSS.innerText = ssVal + "%";
         row1.appendChild(tdSS);
 
@@ -529,7 +529,8 @@ function renderScanRows(rows) {
         const tdSNQ = document.createElement("td");
         tdSNQ.classList.add("text-center");
         const snqVal = ch.snq ?? 0;
-        tdSNQ.classList.add(snqVal < 50 ? "table-danger" : "table-success");
+        const snqClass = snqColorClass(snqVal).replace("bg-", "table-");
+        tdSNQ.classList.add(snqClass);
         tdSNQ.innerText = snqVal + "%";
         row1.appendChild(tdSNQ);
 
