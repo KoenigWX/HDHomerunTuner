@@ -1,6 +1,6 @@
 # HDHomerunTuner
 
-**Version 1.0**
+**Version 0.5.0-alpha**
 
 A web-based manual tuner interface for SiliconDust HDHomeRun devices. The application is implemented in [Flask](https://flask.palletsprojects.com/) and includes a lightweight Bootstrap front end. It exposes several API endpoints for controlling tuners and viewing device status.
 
