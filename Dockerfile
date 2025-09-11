@@ -17,10 +17,10 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5) Copy application code (app.py + static files) into /app
-COPY app.py /app/
-COPY index.html /app/
-COPY app-script.js /app/
+# 5) Copy application code (Python modules + static files) into /app
+COPY app.py db.py /app/
+COPY index.html scan-history.html /app/
+COPY app-script.js history.js /app/
 
 # 6) Expose port 5070
 EXPOSE 5070
