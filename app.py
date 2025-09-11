@@ -439,6 +439,65 @@ def api_scan_status(scan_id):
     return jsonify({"finished": data["finished"], "results": data["results"]})
 
 
+@app.route("/api/scan/schedule", methods=["POST", "GET", "DELETE"])
+def api_scan_schedule():
+    """Set, view, or cancel the periodic scan schedule."""
+    global _scan_interval_hours
+
+    if request.method == "POST":
+        data = request.json or {}
+        interval_raw = data.get("interval_hours")
+        try:
+            interval = float(interval_raw)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Invalid interval_hours"}), 400
+        if interval <= 0:
+            return jsonify({"error": "interval_hours must be > 0"}), 400
+
+        device_id, _ = discover_device()
+        if not device_id:
+            return jsonify({"error": "No device found"}), 503
+
+        start_scheduler(interval)
+        return jsonify({"scheduled": True, "interval_hours": interval})
+
+    if request.method == "DELETE":
+        stop_scheduler()
+        _scan_interval_hours = 0.0
+        return jsonify({"scheduled": False, "interval_hours": None})
+
+    # GET
+    scheduled = scan_scheduler is not None
+    interval = _scan_interval_hours if scheduled else None
+    return jsonify({"scheduled": scheduled, "interval_hours": interval})
+
+
+@app.route("/api/scan/logs")
+def api_scan_logs():
+    """Return paginated scan results from the database."""
+    limit_raw = request.args.get("limit", 100)
+    page_raw = request.args.get("page", 1)
+    try:
+        limit = int(limit_raw)
+        page = int(page_raw)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid pagination"}), 400
+    if limit <= 0 or page <= 0:
+        return jsonify({"error": "Invalid pagination"}), 400
+
+    start_time_raw = request.args.get("start_time")
+    end_time_raw = request.args.get("end_time")
+    try:
+        start_time = int(start_time_raw) if start_time_raw is not None else None
+        end_time = int(end_time_raw) if end_time_raw is not None else None
+    except ValueError:
+        return jsonify({"error": "Invalid time range"}), 400
+
+    offset = (page - 1) * limit
+    results = db.fetch_results(limit=limit, start_time=start_time, end_time=end_time, offset=offset)
+    return jsonify({"results": results, "page": page, "limit": limit})
+
+
 @app.route("/api/scan", methods=["POST"])
 def scan_channels():
     """
