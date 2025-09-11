@@ -4,6 +4,8 @@ import re
 import threading
 import uuid
 
+import db
+
 try:
     from flask import Flask, jsonify, request, send_from_directory
 except ImportError as exc:  # pragma: no cover - runtime guard only
@@ -13,6 +15,9 @@ except ImportError as exc:  # pragma: no cover - runtime guard only
     ) from exc
 
 app = Flask(__name__, static_folder=".", static_url_path="")
+
+# initialize database on startup
+db.init_db()
 
 # Store scan progress keyed by UUID
 scans = {}
@@ -102,6 +107,15 @@ def run_scan(scan_id, device_id, tuner_index):
                 current_group.get("lock") is not None
                 or current_group.get("subchannels")
             ):
+                db.insert_result(
+                    int(time.time()),
+                    tuner_index,
+                    current_group.get("physical"),
+                    current_group.get("ss", 0),
+                    current_group.get("snq", 0),
+                    current_group.get("seq", 0),
+                    current_group.get("subchannels", []),
+                )
                 results.append(current_group)
                 scans[scan_id]["results"] = list(results)
             capturing = False
@@ -123,14 +137,18 @@ def run_scan(scan_id, device_id, tuner_index):
                 "lock": None,
                 "ss": 0,
                 "snq": 0,
+                "seq": 0,
                 "subchannels": [],
             }
 
         elif line.startswith("LOCK:") and current_group is not None:
             # Example: "LOCK: 8vsb (ss=85 snq=88 seq=100)" or "LOCK: none (ss=0 snq=0 seq=0)"
-            m = re.search(r"LOCK:\s+(\S+)(?:\s+\(ss=(\d+)\s+snq=(\d+)\s+seq=(\d+)\))?", line)
+            m = re.search(
+                r"LOCK:\s+(\S+)(?:\s+\(ss=(\d+)\s+snq=(\d+)\s+seq=(\d+)\))?",
+                line,
+            )
             if m:
-                lock_val, ss_val, snq_val, _ = m.groups()
+                lock_val, ss_val, snq_val, seq_val = m.groups()
                 current_group["lock"] = lock_val if lock_val.lower() != "none" else None
                 capturing = lock_val.lower() != "none"
                 if ss_val is not None:
@@ -143,6 +161,11 @@ def run_scan(scan_id, device_id, tuner_index):
                         current_group["snq"] = int(snq_val)
                     except ValueError:
                         current_group["snq"] = 0
+                if seq_val is not None:
+                    try:
+                        current_group["seq"] = int(seq_val)
+                    except ValueError:
+                        current_group["seq"] = 0
 
         elif line.startswith("PROGRAM") and capturing and current_group is not None:
             after_colon = line.split(":", 1)[1].strip()
@@ -157,6 +180,15 @@ def run_scan(scan_id, device_id, tuner_index):
     if current_group is not None and (
         current_group.get("lock") is not None or current_group.get("subchannels")
     ):
+        db.insert_result(
+            int(time.time()),
+            tuner_index,
+            current_group.get("physical"),
+            current_group.get("ss", 0),
+            current_group.get("snq", 0),
+            current_group.get("seq", 0),
+            current_group.get("subchannels", []),
+        )
         results.append(current_group)
 
     scans[scan_id]["results"] = results
