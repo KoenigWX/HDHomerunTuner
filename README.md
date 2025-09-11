@@ -21,6 +21,7 @@ Ongoing maintenance and improvements are handled primarily through ChatGPT.
   subchannels shown in an indented list
 - Real-time charts automatically pause while a channel scan is running
 - Export the latest channel scan results as labeled JSON for ChatGPT
+- View historical scan logs and adjust scan frequency on the Scan History page
 
 ## API Endpoints
 
