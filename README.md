@@ -31,6 +31,10 @@ The server exposes a simple JSON API used by the web UI. Useful endpoints includ
 - `POST /api/tune` – tune a tuner to a physical channel. Body `{tuner, channel}`.
 - `POST /api/program_info` – return bitrate info for a specific program on a tuned tuner. Body `{tuner, program}`.
 - `POST /api/scan/start` and `GET /api/scan/status/<id>` – run a channel scan asynchronously.
+- `POST /api/scan/schedule` – schedule periodic scans. Body `{interval_hours}`.
+- `GET /api/scan/schedule` – view the current scan schedule.
+- `DELETE /api/scan/schedule` – cancel the scan schedule.
+- `GET /api/scan/logs` – fetch paginated scan results. Query parameters `page`, `limit`, `start_time`, `end_time`.
 
 ## Local Development
 

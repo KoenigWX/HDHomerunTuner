@@ -32,7 +32,12 @@ def insert_result(timestamp: int, tuner: int, channel: int, ss: int, snq: int, s
         )
         conn.commit()
 
-def fetch_results(limit: int = 100, start_time: int | None = None, end_time: int | None = None):
+def fetch_results(
+    limit: int = 100,
+    start_time: int | None = None,
+    end_time: int | None = None,
+    offset: int = 0,
+):
     query = (
         "SELECT timestamp, tuner, channel, ss, snq, seq, subchannels FROM scan_results WHERE 1=1"
     )
@@ -47,6 +52,9 @@ def fetch_results(limit: int = 100, start_time: int | None = None, end_time: int
     if limit is not None:
         query += " LIMIT ?"
         params.append(limit)
+    if offset:
+        query += " OFFSET ?"
+        params.append(offset)
     with _connect() as conn:
         cur = conn.execute(query, params)
         rows = cur.fetchall()
