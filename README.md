@@ -36,6 +36,25 @@ The server exposes a simple JSON API used by the web UI. Useful endpoints includ
 - `GET /api/scan/schedule` – view the current scan schedule.
 - `DELETE /api/scan/schedule` – cancel the scan schedule.
 - `GET /api/scan/logs` – fetch paginated scan results. Query parameters `page`, `limit`, `start_time`, `end_time`.
+- `POST /api/scan` – run an immediate scan on a specific tuner. Body `{tuner}`.
+- `POST /api/clear_locks` – release all tuner locks on the device.
+
+### Scheduler Behavior
+
+`POST /api/scan/schedule` starts a background timer that triggers `/api/scan/start`
+on tuner index `3` at the requested interval. Results are saved to
+`scan_results.db`, and the timer automatically re-arms after each run.
+If the tuner is in use or no device is found, the scan is skipped but the
+next run is still scheduled. `GET /api/scan/schedule` returns the current
+interval, and `DELETE /api/scan/schedule` stops the timer.
+
+### Scan History Page
+
+With the app running, open <http://localhost:5070/scan-history.html> or click
+the **Scan History** button on the main page to view past scans and adjust the
+schedule. The page communicates with `/api/scan/logs` and `/api/scan/schedule`.
+No additional environment variables are required beyond those needed to run the
+server.
 
 ## Local Development
 
