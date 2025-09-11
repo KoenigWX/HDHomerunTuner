@@ -22,6 +22,13 @@ db.init_db()
 # Store scan progress keyed by UUID
 scans = {}
 
+# Tuner index reserved for scheduled scans
+SCHEDULED_TUNER_INDEX = 3
+
+# Timer used for periodic background scans
+scan_scheduler: threading.Timer | None = None
+_scan_interval_hours: float = 0.0
+
 # Cache for discovered device information to avoid expensive calls on every
 # request. Values expire after DEVICE_CACHE_TTL seconds.
 DEVICE_CACHE_TTL = 60  # seconds
@@ -226,6 +233,54 @@ def discover_device() -> tuple[str | None, str | None]:
 
     _device_cache.update({"id": device_id, "ip": device_ip, "timestamp": now})
     return device_id, device_ip
+
+
+def _tuner_available(device_id: str, tuner_index: int) -> bool:
+    """Return True if the specified tuner is unlocked."""
+    status_line = subprocess.getoutput(
+        f"hdhomerun_config {device_id} get /tuner{tuner_index}/status"
+    ).strip()
+    return "lock=none" in status_line.lower()
+
+
+def _scheduled_scan() -> None:
+    """Internal helper to run a scan and reschedule itself."""
+    global scan_scheduler
+
+    device_id, _ = discover_device()
+    if device_id and _tuner_available(device_id, SCHEDULED_TUNER_INDEX):
+        scan_id = str(uuid.uuid4())
+        scans[scan_id] = {"finished": False, "results": []}
+        threading.Thread(
+            target=run_scan, args=(scan_id, device_id, SCHEDULED_TUNER_INDEX)
+        ).start()
+    else:
+        if not device_id:
+            app.logger.warning("Scheduled scan skipped: no device found")
+        else:
+            app.logger.warning(
+                "Scheduled scan skipped: tuner %s in use", SCHEDULED_TUNER_INDEX
+            )
+
+    scan_scheduler = threading.Timer(_scan_interval_hours * 3600, _scheduled_scan)
+    scan_scheduler.daemon = True
+    scan_scheduler.start()
+
+
+def start_scheduler(interval_hours: float) -> None:
+    """Start periodic scans every ``interval_hours`` hours."""
+    global _scan_interval_hours
+    _scan_interval_hours = interval_hours
+    stop_scheduler()
+    _scheduled_scan()
+
+
+def stop_scheduler() -> None:
+    """Stop the periodic scan scheduler if running."""
+    global scan_scheduler
+    if scan_scheduler is not None:
+        scan_scheduler.cancel()
+        scan_scheduler = None
 
 
 @app.route("/")
